@@ -408,11 +408,11 @@ class Spider(Spider):  # 元类 默认的元类 type
                 else:
                     if 'video' in jt['mime_type'] or 'video' in jt['category']:
                         remark = self.getsize(jt['size'])
-                        repStr = remark + dirname + jt['name'].replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
+                        repStr = dirname + jt['name'] + remark.replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
                         map[repStr] = shareId + "+" + shareToken + "+" + jt['file_id'] + "+" + jt['category'] + "+"
                     elif 'others' == jt['category'] and ('srt' == jt['file_extension'] or 'ass' == jt['file_extension']):
                         remark = self.getsize(jt['size'])
-                        repStr = remark + dirname + jt['name'].replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
+                        repStr = dirname + jt['name'] + remark.replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
                         subtitle[repStr] = jt['file_id']
             maker = jo['next_marker']
             i = i + 1
@@ -432,7 +432,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         self.localTime = int(time.time())
         url = 'https://api.aliyundrive.com/token/refresh'
         if len(self.authorization) == 0 or self.timeoutTick - self.localTime <= 600:
-            token = requests.get('https://kebedd69.github.io/TVbox-interface/token.json').text
+            token = requests.get('http://www.lmhome.tk:8181/TV/token.txt').text
             form = {
                 'refresh_token': token
             }
@@ -464,7 +464,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         else:
             fs = "KB"
             sz = round(size / (1024.0), 2)
-        remark = '[' + str(sz) + fs + ']/'
+        remark = '/[' + str(sz) + fs + ']'
         return remark
 
 
