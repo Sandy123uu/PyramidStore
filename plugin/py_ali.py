@@ -408,11 +408,11 @@ class Spider(Spider):  # 元类 默认的元类 type
                 else:
                     if 'video' in jt['mime_type'] or 'video' in jt['category']:
                         remark = self.getsize(jt['size'])
-                        repStr = dirname + jt['name'] + remark.replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
+                        repStr = dirname + jt['name'].replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1] + remark
                         map[repStr] = shareId + "+" + shareToken + "+" + jt['file_id'] + "+" + jt['category'] + "+"
                     elif 'others' == jt['category'] and ('srt' == jt['file_extension'] or 'ass' == jt['file_extension']):
                         remark = self.getsize(jt['size'])
-                        repStr = dirname + jt['name'] + remark.replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1]
+                        repStr = dirname + jt['name'].replace("#", "_").replace("$", "_").replace(jt['file_extension'], '')[0:-1] + remark
                         subtitle[repStr] = jt['file_id']
             maker = jo['next_marker']
             i = i + 1
