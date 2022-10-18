@@ -423,7 +423,11 @@ class Spider(Spider):  # 元类 默认的元类 type
                 dirname = items[1]
             self.listFiles(map, shareId, shareToken, item, dirname, subtitle)
         for key in map.keys():
+            if ']|' in key:
+                key = key.split(']|')[1].split('/[')[0]
             for subKey in subtitle.keys():
+                if ']|' in subKey:
+                    subKey = subKey.split(']|')[1].split('/[')[0]
                 if key in subKey and map[key][-1] == "+":
                     map[key] = map[key] + subtitle[subKey]
                     break
