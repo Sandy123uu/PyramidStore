@@ -4,7 +4,6 @@ import sys
 sys.path.append('..')
 from base.spider import Spider
 import base64
-from requests import session, utils
 from Crypto.Cipher import AES
 
 class Spider(Spider):  # 元类 默认的元类 type
@@ -89,7 +88,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         for a in aList:
             name = a.xpath('./a/img/@alt')[0]
             pic = a.xpath('./a/img/@data-original')[0]
-            mark = a.xpath("./div[@class='hdinfo']/span/text()")[0]
+            mark = a.xpath(".//div[@class='jidi']/span/text()")[0]
             sid = a.xpath("./a/@href")[0]
             sid = self.regStr(sid, "/movie/(\\S+).html")
             videos.append({
