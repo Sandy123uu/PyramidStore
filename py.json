@@ -72,14 +72,14 @@
 		"filterable": 1,
 		"ext": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/plugin/py_voflix.py"
 	},{
-		"key": "py_jrskbs",
+		"key": "py_freezb",
 		"name": "体育直播",
 		"type": 3,
-		"api": "py_jrskbs",
+		"api": "py_freezb",
 		"searchable": 1,
 		"quickSearch": 1,
 		"filterable": 1,
-		"ext": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/plugin/py_jrskbs.py"
+		"ext": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/plugin/py_freezb.py"
 	},{
 		"key": "py_bilimd",
 		"name": "B站影视",
