@@ -85,7 +85,7 @@ class Spider(Spider):
 			pic = data['room_src']
 			typeName = data['game_name']
 			remark = data['nickname']
-			purl = data['rtmp_url'] + '/' + data['rtmp_multi_bitrate']['middle2'].replace('wsAuth','txSecret').replace('time','txTime')
+			purl = data['rtmp_url'] + '/' + data['rtmp_live'].replace('wsAuth','txSecret').replace('time','txTime')
 		else:
 			return {}
 		vod = {
