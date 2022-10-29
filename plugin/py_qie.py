@@ -115,7 +115,7 @@ class Spider(Spider):
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
 		url = id
-		header = {'Referer': 'https://m.live.qq.com/',"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"}
+		header = {'Referer': 'https://m.live.qq.com/',"User-Agent": "Mozilla/4.0 (compatible; MSIE 5.00; Windows 98)"}
 		result["parse"] = 0
 		result["playUrl"] = ''
 		result["url"] = url
