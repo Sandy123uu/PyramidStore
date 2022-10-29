@@ -77,13 +77,15 @@ class Spider(Spider):
 		aid = array[0]
 		url = "https://m.live.qq.com/{0}".format(aid)
 		rsp = self.fetch(url)
-		html = self.cleanText(rsp.text)
-		if self.regStr(reg=r'\"show_status\":\"(\d)\"', src=html) == '1':
-			title = self.regStr(reg=r'\"room_name\":\"(.*?)\"', src=html)
-			pic = self.regStr(reg=r'\"room_src\":\"(.*?)\"', src=html)
-			typeName = self.regStr(reg=r'\"game_name\":\"(.*?)\"', src=html)
-			remark = self.regStr(reg=r'\"nickname\":\"(.*?)\"', src=html)
-			purl = self.regStr(reg=r'\"hls_url\":\"(.*?)\"', src=html)
+		m = re.search(r"ROOM_INFO = (.*);<", rsp.text, re.MULTILINE)
+		data = json.loads(m.group(1))
+		data['show_status']
+		if data['show_status'] == '1':
+			title = data['room_name']
+			pic = data['room_src']
+			typeName = data['game_name']
+			remark = data['nickname']
+			purl = data['rtmp_url'] + '/' + data['rtmp_multi_bitrate']['middle2'].replace('wsAuth','txSecret').replace('time','txTime')
 		else:
 			return {}
 		vod = {
@@ -115,11 +117,10 @@ class Spider(Spider):
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
 		url = id
-		header = {'Referer': 'https://m.live.qq.com/',"User-Agent": "Mozilla/4.0 (compatible; MSIE 5.00; Windows 98)"}
 		result["parse"] = 0
 		result["playUrl"] = ''
 		result["url"] = url
-		result["header"] = header
+		result["header"] = ''
 		return result
 
 	config = {
