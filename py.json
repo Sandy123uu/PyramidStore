@@ -54,15 +54,6 @@
 		"filterable": 1,
 		"ext": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/plugin/py_cyys.py"
 	},{
-		"key": "py_zxzj",
-		"name": "在线之家",
-		"type": 3,
-		"api": "py_zxzj",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 1,
-		"ext": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/plugin/py_zxzj.py"
-	},{
 		"key": "py_voflix",
 		"name": "Voflix",
 		"type": 3,
