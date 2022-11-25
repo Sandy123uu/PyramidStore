@@ -45,7 +45,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
         }
         session = self.getCookie(url,header)
-        rsp = session.get(url, cookies=self.cookies, headers=header)
+        rsp = session.get(url, headers=header)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[@class='mi_btcon']//ul/li")
         videos = []
@@ -66,7 +66,6 @@ class Spider(Spider):  # 元类 默认的元类 type
         }
         return result
 
-    cookies = ''
     def getCookie(self,url,header):
         session = requests.session()
         rsp = session.get(url)
@@ -92,7 +91,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
         }
         session = self.getCookie(url,header)
-        rsp = session.get(url, cookies=self.cookies, headers=header)
+        rsp = session.get(url, headers=header)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[contains(@class,'bt_img mi_ne_kd mrb')]/ul/li")
         videos = []
@@ -127,7 +126,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
         }
         session = self.getCookie(url, header)
-        rsp = session.get(url,cookies=self.cookies,headers=header)
+        rsp = session.get(url, headers=header)
         root = self.html(self.cleanText(rsp.text))
         node = root.xpath("//div[@class='dyxingq']")[0]
         pic = node.xpath(".//div[@class='dyimg fl']/img/@src")[0]
@@ -204,7 +203,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
         }
         session = self.getCookie(url, header)
-        rsp = session.get(url,cookies=self.cookies, headers=header)
+        rsp = session.get(url, headers=header)
         root = self.html(self.cleanText(rsp.text))
         vodList = root.xpath("//div[contains(@class,'mi_ne_kd')]/ul/li/a")
         videos = []
@@ -254,7 +253,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         }
         session = self.getCookie(url, header)
         pat = '\\"([^\\"]+)\\";var [\\d\\w]+=function dncry.*md5.enc.Utf8.parse\\(\\"([\\d\\w]+)\\".*md5.enc.Utf8.parse\\(([\\d]+)\\)'
-        rsp = session.get(url,cookies=self.cookies, headers=header)
+        rsp = session.get(url, headers=header)
         html = rsp.text
         content = self.regStr(html, pat)
         if content == '':
