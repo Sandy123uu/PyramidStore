@@ -39,10 +39,13 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def homeVideoContent(self):
         url = "https://czspp.com"
-        if len(self.cookies) <= 0:
-            self.getCookie(url)
-        url = url + self.zid
-        rsp = self.fetch(url)
+        header = {
+            "Connection": "keep-alive",
+            "Referer": url,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
+        }
+        session = self.getCookie(url,header)
+        rsp = session.get(url, cookies=self.cookies, headers=header)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[@class='mi_btcon']//ul/li")
         videos = []
