@@ -23,6 +23,7 @@
     },
     "QiQi": {
         "jx": "http://lanlan.ckflv.cn/?url="
+        "gs": "data,url"
     },
     "Ali": {
         "token": "https://kebedd69.github.io/TVbox-interface/token.json"
