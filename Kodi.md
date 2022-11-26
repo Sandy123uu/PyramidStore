@@ -33,7 +33,11 @@ plugin.video.ysdqg/resources/images：爬虫图标目录
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set.jpg)
 
-3. 添加/删除settings.xml文件中对应内容：\<setting label="320XX" type="bool" id="爬虫开关" default="true"/\>，爬虫开关信息在爬虫文件def hide(self)中。
+3. 添加/删除settings.xml文件中对应内容：
+
+                                       <setting label="320XX" type="bool" id="爬虫开关" default="true"/>
+
+爬虫开关信息在爬虫文件def hide(self)中。
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/sp.jpg)
 
