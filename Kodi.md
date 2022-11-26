@@ -24,15 +24,22 @@ plugin.video.ysdqg/resources/images：爬虫图标目录
 1.添加/删除目录下spider_XXX.py文件
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/sc.jpg)
-2. 添加/删除spider_config.py文件中对应内容：from 爬虫文件名 import 爬虫名 
+
+2. 添加/删除spider_config.py文件中对应内容：
+                                          
+                                          from 爬虫文件名 import 爬虫名 
 
                                           爬虫名.__name__: 爬虫名(),
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set.jpg)
+
 3. 添加/删除settings.xml文件中对应内容：<setting label="320XX" type="bool" id="爬虫开关" default="true"/>，爬虫开关信息在爬虫文件def hide(self)中。
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/sp.jpg)
-4. 添加/删除删除strings.po文件中对应内容：msgctxt "#320XX" 
+
+4. 添加/删除删除strings.po文件中对应内容：
+                                        
+                                        msgctxt "#320XX" 
                                         msgid "爬虫开关"
                                         msgstr "爬虫中文名"
 
