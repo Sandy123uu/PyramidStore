@@ -13,7 +13,7 @@ plugin.video.ysdqg/spider_XXX.py：爬虫文件
 
 plugin.video.ysdqg/spider_config.py：插件爬虫配置文件
 
-plugin.video.ysdqg/resources/settings.xml:插件设置文件
+plugin.video.ysdqg/resources/settings.xml：插件设置文件
 
 plugin.video.ysdqg/resources/language/resource.language.zh_cn(resource.language.en_us)/strings.po：插件语言文件
 
@@ -33,7 +33,7 @@ plugin.video.ysdqg/resources/images：爬虫图标目录
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set.jpg)
 
-3. 添加/删除settings.xml文件中对应内容：<setting label="320XX" type="bool" id="爬虫开关" default="true"/>，爬虫开关信息在爬虫文件def hide(self)中。
+3. 添加/删除settings.xml文件中对应内容：\<setting label="320XX" type="bool" id="爬虫开关" default="true"/\>，爬虫开关信息在爬虫文件def hide(self)中。
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/sp.jpg)
 
