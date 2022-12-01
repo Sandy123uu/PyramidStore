@@ -37,7 +37,7 @@
     "Ali": {
         "token": "https://kebedd69.github.io/TVbox-interface/token.json"
     },
-        "Bili": {
+    "Bili": {
         "cookie": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/cookie.txt", 
         "category": "纪录片,纪录片|相声,相声小品"
     },
