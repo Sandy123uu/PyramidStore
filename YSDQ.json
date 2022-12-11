@@ -41,6 +41,9 @@
         "cookie": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/cookie.txt", 
         "category": "纪录片,纪录片|相声,相声小品"
     },
+    "Zhaozy": {
+        "cookie": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/Zhaozycookie.txt"
+    },
     "Zhibo": [
         {
             "pf": "douyu",
