@@ -42,7 +42,8 @@
         "category": "纪录片,纪录片|相声,相声小品"
     },
     "Zhaozy": {
-        "cookie": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/Zhaozycookie.txt"
+        "username": "输入用户名", 
+        "password": "输入密码"
     },
     "Zhibo": [
         {
