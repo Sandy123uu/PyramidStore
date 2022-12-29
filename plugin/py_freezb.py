@@ -126,13 +126,13 @@ class Spider(Spider):
 		rsp = self.fetch(phpurl,headers=headers,cookies=rsp.cookies)
 		if 'm3u8' in rsp.text:
 			if 'm3u8.html?id=' in rsp.text:
-				purl = re.search(r'm3u8\.html\?id=(.*?m3u8.*?)\"', rsp.text).group(1)
+				purl = re.search(r'm3u8\.html\?id=(.*?m3u8.*?)\"', rsp.text.replace("\n",'').replace("\r",'')).group(1)
 			else:
-				purl = re.search(r"url: \'(.*?)\'", rsp.text).group(1)
+				purl = re.search(r"url: \'(.*?)\'", rsp.text.replace("\n",'').replace("\r",'')).group(1)
 			if not purl.startswith('http'):
 				purl = re.search(r"(.*)/", phpurl).group(1) + purl
 		else:
-			aurl = re.search(r"(.*)/", phpurl).group(1) + re.search(r'src=\"..(.*?)\"', rsp.text).group(1)
+			aurl = re.search(r"(.*)/", phpurl).group(1) + re.search(r'src=\"..(.*?)\"', rsp.text.replace("\n",'').replace("\r",'')).group(1)
 			aheaders = {
 				"Referer": phpurl,
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
@@ -140,7 +140,7 @@ class Spider(Spider):
 			r = self.fetch(aurl, headers=aheaders, cookies=rsp.cookies)
 			purl = re.search(r"url: \'(.*?)\'", r.text)
 			if purl == None:
-				purl = re.search(r'm3u8\.html\?id=(.*?)\"', r.text)
+				purl = re.search(r'm3u8\.html\?id=(.*?)\"', r.text.replace("\n",'').replace("\r",''))
 			purl = purl.group(1)
 		result["parse"] = 0
 		result["playUrl"] = ''

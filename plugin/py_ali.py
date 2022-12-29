@@ -123,8 +123,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         shareToken = ids[1]
         fileId = ids[2]
         subtitle = ids[4]
-        url = '{0}?do=push_agent&api=python&type=m3u8&share_id={1}&file_id={2}'.format(self.localProxyUrl, shareId,
-                                                                                       fileId)
+        url = '{0}?do=push_agent&api=python&type=m3u8&share_id={1}&file_id={2}'.format(self.localProxyUrl, shareId,fileId)
         subtitleUrl = self.subtitleContent(id)
         newHeader = {
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36",
@@ -174,6 +173,8 @@ class Spider(Spider):  # 元类 默认的元类 type
         hashMap = {}
         dirname = self.dirname
         self.listFiles(hashMap, shareId, shareToken, fileId, dirname)
+        if not hashMap:
+            return {}
         sortedMap = sorted(hashMap.items(), key=lambda x: x[0])
         arrayList = []
         playList = []
@@ -287,8 +288,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             if 'x-oss-expires' in tmpSlice:
                 count = count + 1
                 mediaMap[str(count)] = host + tmpSlice
-                tmpSlice = "{0}?do=push_agent&api=python&type=media&share_id={1}&file_id={2}&media_id={3}".format(
-                    self.localProxyUrl, shareId, fileId, count)
+                tmpSlice = "{0}?do=push_agent&api=python&type=media&share_id={1}&file_id={2}&media_id={3}".format(self.localProxyUrl, shareId, fileId, count)
             m3u8List.append(tmpSlice)
         self.localMedia[fileId] = mediaMap
         return '\n'.join(m3u8List)
@@ -327,7 +327,6 @@ class Spider(Spider):  # 元类 默认的元类 type
     def proxyM3U8(self, map):
         shareId = map['share_id']
         fileId = map['file_id']
-
         shareToken = self.getToken(shareId, '')
         content = self.getMediaSlice(shareId, shareToken, fileId)
 
@@ -436,7 +435,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         self.localTime = int(time.time())
         url = 'https://api.aliyundrive.com/token/refresh'
         if len(self.authorization) == 0 or self.timeoutTick - self.localTime <= 600:
-            token = requests.get('https://kebedd69.github.io/TVbox-interface/token.json').text
+            token = requests.get('http://ali.饭太硬.ml/tok').text.replace('\n','')
             form = {
                 'refresh_token': token
             }

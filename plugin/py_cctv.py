@@ -128,50 +128,7 @@ class Spider(Spider):  # 元类 默认的元类 type
 			]
 		}
 		return result
-	# def detailContent(self,array):
-	# 	aid = array[0].split('###')
-	# 	tid = aid[0]
-	# 	logo = aid[2]
-	# 	webSite = aid[1]
-	# 	date = aid[0]
-	# 	rsp = self.fetch(webSite,headers=self.header)
-	# 	topicId = ''
-	# 	root = self.html(rsp.text)
-	# 	topicId = self.regStr(rsp.text,"(TOPC[0-9]{16})")
-	# 	title = root.xpath('.//title/text()')[0]
-	# 	if len(topicId) <= 0:
-	# 		return {}
-	# 	url = "https://api.cntv.cn/NewVideo/getVideoListByColumn?id={0}&d={1}&p=1&n=100&sort=desc&mode=0&serviceId=tvcctv&t=json".format(topicId,date)
-	# 	jo = self.fetch(url,headers=self.header).json()
-	# 	vodList = jo['data']['list']
-	# 	videoList = []
-	# 	for video in vodList:
-	# 		videoList.append(video['title']+"$"+video['guid'])
-	# 	if len(videoList) == 0:
-	# 		return {}
-	# 	if len(date) == 0:
-	# 		date = '近期'
-	# 	vod = {
-	# 		"vod_id":array[0],
-	# 		"vod_name":date +" "+title,
-	# 		"vod_pic":logo,
-	# 		"type_name":'',
-	# 		"vod_year":date,
-	# 		"vod_area":"",
-	# 		"vod_remarks":date,
-	# 		"vod_actor":"",
-	# 		"vod_director":"",
-	# 		"vod_content":"详情页面默认只展示最新100期的内容，可以在分类页面选择年份和月份进行往期节目查看。年份和月份仅影响视频详情内容，不参与分类过滤。视频默认播放最高帧率。"
-	# 	}
 
-	# 	vod['vod_play_from'] = 'CCTV'
-	# 	vod['vod_play_url'] = "#".join(videoList)
-	# 	result = {
-	# 		'list':[
-	# 			vod
-	# 		]
-	# 	}
-	# 	return result
 	def searchContent(self,key,quick):
 		result = {
 			'list':[]

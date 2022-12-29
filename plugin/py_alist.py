@@ -25,13 +25,17 @@ class Spider(Spider):  # 元类 默认的元类 type
     def homeContent(self, filter):
         result = {}
         cateManual = {
+            "小雅": "http://101.34.67.237:5678",
             "七米蓝": "https://al.chirmyram.com",
             "梅花盘": "https://pan.142856.xyz/OneDrive",
             "触光云盘": "https://pan.ichuguang.com",
             "小孟资源": "https://8023.haohanba.cn/小孟丨资源大合集/无损音乐",
             "资源小站": "https://960303.xyz/ali",
             "轻弹浅唱": "https://g.xiang.lol",
-            "小兵组网盘视频": "https://6vv.app"
+            "小兵组网盘视频": "https://6vv.app",
+            "9T": "https://drive.9t.ee",
+            "LmHome": "http://www.lmhome.tk:15244",
+            "Puppet Studio": "https://www.kugutsu.ml"
         }
         classes = []
         for k in cateManual:
@@ -46,7 +50,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             for lk in cateManual:
                 link = cateManual[lk]
                 filters.update({
-                    link: [{"key": "nm", "name": "名        称", "value": [{"n": "复位", "v": ""},{"n": "正序", "v": "False"},{"n": "反序", "v": "True"}]},{"key": "sz", "name": "大        小", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]},{"key": "tp", "name": "类        型", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]},{"key": "tm", "name": "修改时间", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]}]
+                    link: [{"key": "nm", "name": "名        称", "value": [{"n": "复位", "v": ""},{"n": "正序", "v": "False"},{"n": "反序", "v": "True"}]},{"key": "sz", "name": "大        小", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]},{"key": "tp", "name": "类        型", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]},{"key": "tm", "name": "修改时间", "value": [{"n": "复位", "v": ""},{"n": "升序", "v": "False"},{"n": "降序", "v": "True"}]},{"key": "xq", "name": "详情模式", "value": [{"n": "默认", "v": "150"},{"n": "单文件", "v": "1"},{"n": "全排列", "v": "0"}]}]
                 })
             result['filters'] = filters
         return result
@@ -99,6 +103,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             jo = json.loads(rsp.text)
             vodList = jo['data']['content']
         ovodList = vodList
+        numkey = 150
         if len(extend) != 0:
             if 'tp' in extend and extend['tp'] != '':
                 fl = 'type'
@@ -107,21 +112,21 @@ class Spider(Spider):  # 元类 默认的元类 type
                 if extend['tp'] == "False":
                     key = False
                 vodList.sort(key=lambda x: (x['{0}'.format(fl)]), reverse=key)
-            elif 'sz' in extend and extend['sz'] != '':
+            if 'sz' in extend and extend['sz'] != '':
                 fl = 'size'
                 if extend['sz'] == "True":
                     key = True
                 if extend['sz'] == "False":
                     key = False
                 vodList.sort(key=lambda x: (x['{0}'.format(fl)]), reverse=key)
-            elif 'nm' in extend and extend['nm'] != '':
+            if 'nm' in extend and extend['nm'] != '':
                 fl = 'name'
                 if extend['nm'] == "True":
                     key = True
                 if extend['nm'] == "False":
                     key = False
                 vodList.sort(key=lambda x: (x['{0}'.format(fl)]), reverse=key)
-            elif 'tm' in extend and extend['tm'] != '':
+            if 'tm' in extend and extend['tm'] != '':
                 if ver == 2:
                     fl = 'updated_at'
                 elif ver == 3:
@@ -131,6 +136,11 @@ class Spider(Spider):  # 元类 默认的元类 type
                 if extend['tm'] == "False":
                     key = False
                 vodList.sort(key=lambda x: (x['{0}'.format(fl)]), reverse=key)
+            if 'xq' in extend:
+                if extend['xq'] != "0":
+                    numkey = int(extend['xq'])
+                else:
+                    numkey = 9999
             else:
                 vodList = ovodList
         else:
@@ -182,7 +192,7 @@ class Spider(Spider):  # 元类 默认的元类 type
                 remark = str(sz) + fs
                 cid = baseurl + aid + vod['name']
                 # 开始爬视频与字幕
-                if filenum < 150:
+                if filenum < numkey:
                     if vod['name'].endswith('.mp4') or vod['name'].endswith('.mkv') or vod['name'].endswith('.ts') or vod['name'].endswith('.TS') or vod['name'].endswith('.avi') or vod['name'].endswith('.flv') or vod['name'].endswith('.rmvb') or vod['name'].endswith('.mp3') or vod['name'].endswith('.flac') or vod['name'].endswith('.wav') or vod['name'].endswith('.wma') or vod['name'].endswith('.dff'):
                         vodurl = vod['name']
                         # 开始爬字幕
@@ -262,8 +272,8 @@ class Spider(Spider):  # 元类 默认的元类 type
         result['list'] = videos
         result['page'] = 1
         result['pagecount'] = 1
-        result['limit'] = lenvodList
-        result['total'] = lenvodList
+        result['limit'] = 999
+        result['total'] = 999999
         return result
 
     def detailContent(self, array):
@@ -399,8 +409,6 @@ class Spider(Spider):  # 元类 默认的元类 type
                 url = head + url
             urlvfileName = urllib.parse.quote(vfileName)
             url = url.replace(vfileName, urlvfileName)
-            if driver == 'Baidu.Disk':
-                result["header"] = {"User-Agent": "pan.baidu.com"}
         result["parse"] = 0
         result["playUrl"] = ''
         result["url"] = url
