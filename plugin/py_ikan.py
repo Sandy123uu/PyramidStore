@@ -57,7 +57,10 @@ class Spider(Spider):
 			aid = self.regStr(reg=r'/voddetail/(.*?)/', src=aid)
 			img = a.xpath(".//div[contains(@class, 'myui-vodlist__box')]/a/@data-original")[0]
 			name = a.xpath(".//div[contains(@class, 'myui-vodlist__box')]/a/@title")[0]
-			remark = a.xpath(".//span[contains(@class, 'pic-text text-right')]/text()")[0]
+			remark = a.xpath(".//span[contains(@class, 'pic-text text-right')]/text()")
+			if remark == []:
+				remark = a.xpath(".//span[contains(@class, 'pic-tag pic-tag-top')]/span/text()")
+			remark = remark[0]
 			videos.append({
 				"vod_id": aid,
 				"vod_name": name,
@@ -79,7 +82,7 @@ class Spider(Spider):
 		node = html.xpath("//div[@class='myui-content__detail']")[0]
 		title = node.xpath("./h1/text()")[0]
 		pic = html.xpath("//a[@class='myui-vodlist__thumb picture']/img/@src")[0]
-		cont = html.xpath("//div[@class='col-pd text-collapse content']/span[@class='data']/p/text()")[0].replace('\u3000','')
+		cont = html.xpath("//div[@class='col-pd text-collapse content']/span[@class='data']/text()")[0].replace('\u3000','')
 		infoList = node.xpath("./p[@class='data']")
 		for info in infoList:
 			content = info.xpath('string(.)').replace('\t','').replace('\r','').replace('\n','').strip()
