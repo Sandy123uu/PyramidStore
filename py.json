@@ -1,7 +1,13 @@
 {
-	"sites": [{
+  "rules": [
+  {"host":"v.douyin.com", "rule":["douyinvod.com", "/video/tos/cn/", "mime_type="]},
+  {"host":"*", "rule":["cn-beijing.data.alicloudccp.com", "/", "di=", "dr=", "f=", "response-content-disposition=", "security-token=", "u=", "x-oss-access-key-id=", "x-oss-expires=", "x-oss-signature=", "x-oss-signature-version="]},
+  {"host":"www.iesdouyin.com", "rule":["douyinvod.com", "/video/tos/cn/", "mime_type="]}
+], 
+	"sites": [
+	{
 		"key": "py_kunyu77",
-		"name": "酷云77",
+		"name": "🔥七七",
 		"type": 3,
 		"api": "py_kunyu77",
 		"searchable": 0,
@@ -9,8 +15,35 @@
 		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_kunyu77.py"
 	},{
+		"key": "py_douyu",
+		"name": "🔥斗鱼",
+		"type": 3,
+		"api": "py_douyu",
+		"searchable": 0,
+		"quickSearch": 0,
+		"filterable": 1,
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_douyu.py"
+	},{
+		"key": "py_huya",
+		"name": "🔥虎牙",
+		"type": 3,
+		"api": "py_huya",
+		"searchable": 0,
+		"quickSearch": 0,
+		"filterable": 1,
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_huya.py"
+	},{
+		"key": "py_ikan",
+		"name": "🔥爱看",
+		"type": 3,
+		"api": "py_ikan",
+		"searchable": 0,
+		"quickSearch": 0,
+		"filterable": 1,
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_ikan.py"
+	},{
 		"key": "py_bilivd",
-		"name": "B站",
+		"name": "🔥B站视频",
 		"type": 3,
 		"api": "py_bilivd",
 		"searchable": 1,
@@ -18,26 +51,17 @@
 		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_bilivd.py"
 	},{
-		"key": "py_3qu",
-		"name": "3QU",
+		"key": "py_bilimd",
+		"name": "🔥B站影视",
 		"type": 3,
-		"api": "py_3qu",
+		"api": "py_bilimd",
 		"searchable": 1,
 		"quickSearch": 1,
 		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_3qu.py"
-	},{
-		"key": "py_cctv",
-		"name": "央视",
-		"type": 3,
-		"api": "py_cctv",
-		"searchable": 0,
-		"quickSearch": 0,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_cctv.py"
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_bilimd.py"
 	},{
 		"key": "py_czspp",
-		"name": "厂长",
+		"name": "🔥厂长影视",
 		"type": 3,
 		"api": "py_czspp",
 		"searchable": 1,
@@ -46,7 +70,7 @@
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_czspp.py"
 	},{
 		"key": "py_cyys",
-		"name": "创艺",
+		"name": "🔥创艺影视",
 		"type": 3,
 		"api": "py_cyys",
 		"searchable": 1,
@@ -54,17 +78,8 @@
 		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_cyys.py"
 	},{
-		"key": "py_voflix",
-		"name": "Voflix",
-		"type": 3,
-		"api": "py_voflix",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_voflix.py"
-	},{
 		"key": "py_freezb",
-		"name": "体育直播",
+		"name": "🔥体育直播",
 		"type": 3,
 		"api": "py_freezb",
 		"searchable": 1,
@@ -72,98 +87,44 @@
 		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_freezb.py"
 	},{
-		"key": "py_bilimd",
-		"name": "B站影视",
+		"key": "py_cctv",
+		"name": "🔥CCTV",
 		"type": 3,
-		"api": "py_bilimd",
+		"api": "py_cctv",
 		"searchable": 1,
 		"quickSearch": 1,
 		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_bilimd.py"
-	},{
-		"key": "py_qie",
-		"name": "企鹅体育",
-		"type": 3,
-		"api": "py_qie",
-		"searchable": 0,
-		"quickSearch": 0,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_qie.py"
-	},{
-		"key": "py_huya",
-		"name": "虎牙",
-		"type": 3,
-		"api": "py_huya",
-		"searchable": 0,
-		"quickSearch": 0,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_huya.py"
-	}, {
-		"key": "py_douyu",
-		"name": "斗鱼",
-		"type": 3,
-		"api": "py_douyu",
-		"searchable": 0,
-		"quickSearch": 0,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_douyu.py"
-	}, {
-		"key": "py_cokemv",
-		"name": "COKE",
-		"type": 3,
-		"api": "py_cokemv",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 1,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_cokemv.py"
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_cctv.py"
 	},{
 		"key": "py_gitcafe",
-		"name": "小纸条",
+		"name": "🔥小纸条",
 		"type": 3,
 		"api": "py_gitcafe",
 		"searchable": 1,
 		"quickSearch": 1,
-		"filterable": 0,
+		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_gitcafe.py"
-	}, {
-		"key": "py_yiso",
-		"name": "易搜",
+	},{
+		"key": "py_alist",
+		"name": "🖥网盘",
 		"type": 3,
-		"api": "py_yiso",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 0,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_yiso.py"
-	}, {
+		"api": "py_alist",
+		"searchable": 0,
+		"quickSearch": 0,
+		"filterable": 1,
+		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_alist.py"
+	},{
 		"key": "py_zhaozy",
-		"name": "找资源",
+		"name": "🖥找资源",
 		"type": 3,
 		"api": "py_zhaozy",
 		"searchable": 1,
 		"quickSearch": 1,
 		"filterable": 0,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_zhaozy.py"
-	}, {
-		"key": "py_alist",
-		"name": "Alist",
-		"type": 3,
-		"api": "py_alist",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 0,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_alist.py"
-	}, {
-		"key": "py_pansou",
-		"name": "盘搜",
-		"type": 3,
-		"api": "py_pansou",
-		"searchable": 1,
-		"quickSearch": 1,
-		"filterable": 0,
-		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/plugin/py_pansou.py"
-	}, {
+	},{
 		"key": "push_agent",
-		"name": "阿里",
+		"name": "🖥推送",
 		"type": 3,
 		"api": "py_ali",
 		"searchable": 0,
@@ -206,35 +167,14 @@
 		"ext": {
 			"flag": ["youku", "优酷", "mgtv", "芒果", "qq", "腾讯", "qiyi", "爱奇艺", "qq", "xigua", "奇艺"]
 		}
-	}, {
-		"name": "网络搜集05",
-		"type": 1,
-		"url": "https://a.dxzj88.com/jxrrm/jiami.php?url=",
-		"ext": {
-			"flag": ["qq", "腾讯", "qiyi", "爱奇艺", "奇艺", "youku", "优酷", "sohu", "芒果", "mgtv", "xigua", "wuduzy", "bilibili", "pptv", "leduo", "Clk4", "哔哩", "renrenmi", "ltnb", "rx"]
-		}
-	}, {
-		"name": "网络搜集06",
-		"type": 1,
-		"url": "https://sz.dxzj88.com/jxrjrm/jiaomi.php?url=",
-		"ext": {
-			"flag": ["qq", "腾讯", "qiyi", "爱奇艺", "奇艺", "youku", "优酷", "sohu", "芒果", "mgtv", "xigua", "wuduzy", "bilibili", "pptv", "leduo", "Clk4", "哔哩", "renrenmi", "ltnb", "rx"]
-		}
-	}, {
+	},{
 		"name": "网络搜集07",
 		"type": 1,
 		"url": "https://vip.aiaine.com/api/?key=8FN8gNAySnvJiMllxZ&url=",
 		"ext": {
 			"flag": ["ltnb"]
 		}
-	}, {
-		"name": "网络搜集08",
-		"type": 1,
-		"url": "https://svip.rongxingvr.top/api/?key=niBgMGXVdCQhsmeEBK&url=",
-		"ext": {
-			"flag": ["youku", "qq", "mgtv", "bilibili", "wasu", "xigua", "renrenmi", "优酷", "芒果"]
-		}
-	}, {
+	},{
 		"name": "网络搜集10",
 		"type": 1,
 		"url": "https://json.5lp.net/json.php?url=",
@@ -246,7 +186,7 @@
 		"group": "redirect",
 		"channels": [{
 			"name": "live",
-			"urls": ["proxy://do=live&type=txt&ext=aHR0cDovL3R2Lmp0aG4uY24vbGl2ZXMvbGl2ZV9wbHVzLnR4dA=="]
+			"urls": ["proxy://do=live&type=txt&ext=aHR0cDovL3Rhbm5pbmctc2Vydjo5NTI3L0NvbnRlbnQvY2F0LzIyMDYwMS9saXZlLmpz"]
 		}]
 	}],
 	"flags": ["youku", "qq", "iqiyi", "qiyi", "letv", "sohu", "letv", "tudou", "pptv", "mgtv", "wasu", "bilibili", "leduo", "fq3", "fq4", "xueren", "duoduo", "duoduozy", "miaoparty", "miaoparty2", "miaoparty3", "renrenmi", "优酷", "芒果", "腾讯", "爱奇艺", "奇艺", "ltnb", "rx", "CL4K", "xfyun", "wuduzy"],
@@ -378,6 +318,6 @@
 		}]
 	}],
 	"ads": ["mimg.0c1q0l.cn", "www.googletagmanager.com", "www.google-analytics.com", "mc.usihnbcq.cn", "mg.g1mm3d.cn", "mscs.svaeuzh.cn", "cnzz.hhttm.top", "tp.vinuxhome.com", "cnzz.mmstat.com", "www.baihuillq.com", "s23.cnzz.com", "z3.cnzz.com", "c.cnzz.com", "stj.v1vo.top", "z12.cnzz.com", "img.mosflower.cn", "tips.gamevvip.com", "ehwe.yhdtns.com", "xdn.cqqc3.com", "www.jixunkyy.cn", "sp.chemacid.cn", "hm.baidu.com", "s9.cnzz.com", "z6.cnzz.com", "um.cavuc.com", "mav.mavuz.com", "wofwk.aoidf3.com", "z5.cnzz.com", "xc.hubeijieshikj.cn", "tj.tianwenhu.com", "xg.gars57.cn", "k.jinxiuzhilv.com", "cdn.bootcss.com", "ppl.xunzhuo123.com", "xomk.jiangjunmh.top", "img.xunzhuo123.com", "z1.cnzz.com", "s13.cnzz.com", "xg.huataisangao.cn", "z7.cnzz.com", "xg.huataisangao.cn", "z2.cnzz.com", "s96.cnzz.com", "q11.cnzz.com", "thy.dacedsfa.cn", "xg.whsbpw.cn", "s19.cnzz.com", "z8.cnzz.com", "s4.cnzz.com", "f5w.as12df.top", "ae01.alicdn.com", "www.92424.cn", "k.wudejia.com", "vivovip.mmszxc.top", "qiu.xixiqiu.com", "cdnjs.hnfenxun.com", "cms.qdwght.com"],
-	"wallpaper": "https://picsum.photos/1080",
-	"spider": ""
+	"spider":"",
+	"lives":[{"group":"redirect","channels":[{"name":"live","urls":["proxy://do=live&type=txt&ext=aHR0cDovL3R2Lmp0aG4uY24vbGl2ZXMvbGl2ZV9wbHVzLnR4dA=="]}]}]
 }
