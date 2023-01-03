@@ -36,7 +36,7 @@
     ],
     "YSDQ": {
         "thlimit": 5, 
-        "ocrurl": "http://www.lmhome.tk:9887/ocr/b64/text"
+        "ocrurl": "https://api.nn.ci/ocr/b64/text"
     },
     "Ali": {
         "token": "http://43.136.216.26:16888/json/token.txt"
