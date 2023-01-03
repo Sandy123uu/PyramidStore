@@ -34,8 +34,12 @@
           "erro":"解析失败"
           }
     ],
+    "YSDQ": {
+        "thlimit": 5, 
+        "ocrurl": "http://www.lmhome.tk:9887/ocr/b64/text"
+    },
     "Ali": {
-        "token": "https://kebedd69.github.io/TVbox-interface/token.json"
+        "token": "http://43.136.216.26:16888/json/token.txt"
     },
     "Bili": {
         "cookie": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/cookie.txt", 
