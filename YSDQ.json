@@ -39,7 +39,7 @@
         "ocrurl": "https://api.nn.ci/ocr/b64/text"
     },
     "Ali": {
-        "token": "http://43.136.216.26:16888/json/token.txt"
+        "token": "http://ali.饭太硬.ml/tok"
     },
     "Bili": {
         "cookie": "https://raw.iqiq.io/lm317379829/PyramidStore/pyramid/cookie.txt", 
