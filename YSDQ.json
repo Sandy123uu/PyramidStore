@@ -36,6 +36,7 @@
     ],
     "YSDQ": {
         "thlimit": 5, 
+        "searchList":"qq,ik,bw,ld,bb,ps,ys,zzy,xzt",
         "ocrurl": "https://api.nn.ci/ocr/b64/text"
     },
     "Ali": {
