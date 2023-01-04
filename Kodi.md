@@ -1,7 +1,7 @@
 
 ## Kodi插件自定义修改及使用教程
 
-影视大全(改)插件基于小明的影视大全修改而来，添加了部分爬虫及Alist网盘支持，除Alist爬虫外两插件的爬虫文件相互兼容。
+影视大全(改)插件基于小明的影视大全修改而来，添加Alist网盘支持与豆瓣聚搜，兼容部分小明大佬插件爬虫。
 
 ### 自定义修改
 
@@ -57,9 +57,17 @@ https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/YSDQ.json
 
 插件设置→阿里云盘设置→Token/外链设置
 
+可通过json文件配置Alist网盘地址、直播分类信息、哎呦疼忙解析接口、Ali-token(外链或token)、B站cookies(外链或cookies)、B站视频分类、找资源所需用户名密码等。其中，YSDQ下thlimit为单个搜索最大线程数，硬件配置不够的可以调小，searchList为启用的搜索站点：qq=七七、ik=爱看、bw=被窝、ld=零度、bb=哔哩哔哩番剧、ps=盘搜、ys=易搜、zzy=找资源、xzt=小纸条。
+
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/jx.jpg)
 
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/json.jpg)
+
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/json2.jpg)
+
 ![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/json3.png)
+
+![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/搜索相关.jpg)
+
+![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/json4.jpg)
 
