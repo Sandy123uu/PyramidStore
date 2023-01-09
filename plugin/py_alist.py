@@ -25,7 +25,7 @@ class Spider(Spider):  # 元类 默认的元类 type
     def homeContent(self, filter):
         result = {}
         cateManual = {
-            "小雅": "http://101.34.67.237:5678",
+            "小雅": "http://alist.xiaoya.pro",
             "七米蓝": "https://al.chirmyram.com",
             "梅花盘": "https://pan.142856.xyz/OneDrive",
             "触光云盘": "https://pan.ichuguang.com",
@@ -33,9 +33,6 @@ class Spider(Spider):  # 元类 默认的元类 type
             "资源小站": "https://960303.xyz/ali",
             "轻弹浅唱": "https://g.xiang.lol",
             "小兵组网盘视频": "https://6vv.app",
-            "9T": "https://drive.9t.ee",
-            "LmHome": "http://www.lmhome.tk:15244",
-            "Puppet Studio": "https://www.kugutsu.ml"
         }
         classes = []
         for k in cateManual:
@@ -64,13 +61,14 @@ class Spider(Spider):  # 元类 默认的元类 type
     ver = ''
     baseurl = ''
     def getVersion(self, gtid):
-        param = {
-            "path": '/'
-        }
         if gtid.count('/') == 2:
             gtid = gtid + '/'
         baseurl = re.findall(r"http.*://.*?/", gtid)[0]
-        ver = self.fetch(baseurl + 'api/public/settings', param)
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+            'Referer': baseurl
+        }
+        ver = self.fetch(baseurl + 'api/public/settings', headers=header)
         vjo = json.loads(ver.text)['data']
         if type(vjo) is dict:
             ver = 3
@@ -88,6 +86,10 @@ class Spider(Spider):  # 元类 默认的元类 type
             self.getVersion(tid)
         ver = self.ver
         baseurl = self.baseurl
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+            'Referer': baseurl
+        }
         if tid.count('/') == 2:
             tid = tid + '/'
         pat = tid.replace(baseurl,"")
@@ -95,11 +97,11 @@ class Spider(Spider):  # 元类 默认的元类 type
             "path": '/' + pat
         }
         if ver == 2:
-            rsp = self.postJson(baseurl + 'api/public/path', param)
+            rsp = self.postJson(baseurl + 'api/public/path', param, headers=header)
             jo = json.loads(rsp.text)
             vodList = jo['data']['files']
         elif ver == 3:
-            rsp = self.postJson(baseurl + 'api/fs/list', param)
+            rsp = self.postJson(baseurl + 'api/fs/list', param, headers=header)
             jo = json.loads(rsp.text)
             vodList = jo['data']['content']
         ovodList = vodList
@@ -337,6 +339,10 @@ class Spider(Spider):  # 元类 默认的元类 type
                 self.getVersion(ids[1])
             ver = self.ver
             baseurl = self.baseurl
+            header = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+                'Referer': baseurl
+            }
             fileName = ids[1].replace(baseurl, "")
             vfileName = ids[0].replace(baseurl, "")
             param = {
@@ -352,20 +358,20 @@ class Spider(Spider):  # 元类 默认的元类 type
                 "page_size": 100
             }
             if ver == 2:
-                rsp = self.postJson(baseurl + 'api/public/path', param)
+                rsp = self.postJson(baseurl + 'api/public/path', param, headers=header)
                 jo = json.loads(rsp.text)
                 vodList = jo['data']['files'][0]
                 subturl = vodList['url']
-                vrsp = self.postJson(baseurl + 'api/public/path', vparam)
+                vrsp = self.postJson(baseurl + 'api/public/path', vparam, headers=header)
                 vjo = json.loads(vrsp.text)
                 vList = vjo['data']['files'][0]
                 url = vList['url']
             elif ver == 3:
-                rsp = self.postJson(baseurl + 'api/fs/get', param)
+                rsp = self.postJson(baseurl + 'api/fs/get', param, headers=header)
                 jo = json.loads(rsp.text)
                 vodList = jo['data']
                 subturl = vodList['raw_url']
-                vrsp = self.postJson(baseurl + 'api/fs/get', vparam)
+                vrsp = self.postJson(baseurl + 'api/fs/get', vparam, headers=header)
                 vjo = json.loads(vrsp.text)
                 vList = vjo['data']
                 url = vList['raw_url']
@@ -385,6 +391,10 @@ class Spider(Spider):  # 元类 默认的元类 type
                 self.getVersion(id)
             ver = self.ver
             baseurl = self.baseurl
+            header = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+                'Referer': baseurl
+            }
             vfileName = id.replace(baseurl, "")
             vparam = {
                 "path": '/' + vfileName,
@@ -393,13 +403,13 @@ class Spider(Spider):  # 元类 默认的元类 type
                 "page_size": 100
             }
             if ver == 2:
-                vrsp = self.postJson(baseurl + 'api/public/path', vparam)
+                vrsp = self.postJson(baseurl + 'api/public/path', vparam, headers=header)
                 vjo = json.loads(vrsp.text)
                 vList = vjo['data']['files'][0]
                 driver = vList['driver']
                 url = vList['url']
             elif ver == 3:
-                vrsp = self.postJson(baseurl + 'api/fs/get', vparam)
+                vrsp = self.postJson(baseurl + 'api/fs/get', vparam, headers=header)
                 vjo = json.loads(vrsp.text)
                 vList = vjo['data']
                 url = vList['raw_url']
