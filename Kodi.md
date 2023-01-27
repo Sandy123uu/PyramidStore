@@ -51,9 +51,17 @@ plugin.video.ysdqg/resources/images：爬虫图标目录
 
 ##### 3.使用教程
 
+插件设置添加在线更新配置与用户文件路径项目，可通过用户文件路径自定义包括配置文件、收藏记录、播放记录等文件存放路径，默认为空，暨插件所在目录；关闭在线更新配置，可使用纯本地配置。
+
+![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set2.jpg)
+
+![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set3.jpg)
+
+![image](https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/img/set4.jpg)
+
 通过如下配置自定义爬虫相关内容，可通过json文件配置Alist网盘地址、直播分类信息、哎呦疼忙解析接口、Ali-token(外链或token)、B站cookies(外链或cookies)、B站视频分类、找资源所需用户名密码等。其中，YSDQ下thlimit为单个搜索最大线程数，硬件配置不够的可以调小；speedLimit为直播源最低速度，低于speedLimit的直播源将被舍弃，支持单位M、K(大小写均可)，1M=1024K；searchList为启用的搜索站点：qq=七七、ik=爱看、bw=被窝、ld=零度、bb=哔哩哔哩番剧、ps=盘搜、ys=易搜、zzy=找资源、xzt=小纸条。
 
-https://raw.githubusercontent.com/lm317379829/PyramidStore/pyramid/YSDQ.json
+https://cjk.lm317379829.repl.co/CJK/YSDQ.json
 
 插件设置→阿里云盘设置→Token/外链设置
 
