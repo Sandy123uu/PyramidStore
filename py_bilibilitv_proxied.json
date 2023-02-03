@@ -10,7 +10,9 @@
 		"name": "哔哩哔哩",
 		"type": 3,
 		"api": "py_bilibili",
+		"playerType": 2,
 		"searchable": 1,
+		"switchable": 0,
 		"quickSearch": 1,
 		"filterable": 1,
 		"ext": "https://ghproxy.com/https://raw.githubusercontent.com/Sandy123uu/PyramidStore/pyramid/plugin/py_bilibili.py"
@@ -129,158 +131,96 @@
             "type": 0,
             "url": "https://jx.cainisi.cf/?v=",
             "ext": {
-                "flag": [
-                    "qq",
-                    "腾讯",
-                    "qiyi",
-                    "爱奇艺",
-                    "奇艺",
-                    "youku",
-                    "优酷",
-                    "mgtv",
-                    "芒果",
-                    "letv",
-                    "leshi",
-                    "LS",
-                    "pptv",
-                    "PPTV",
-                    "sohu",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩"
-                ],
                 "header": {
                     "User-Agent": ""
                 }
             }
         },
         {
-            "name": "rx2",
-            "type": 1,
-            "url": "http://rxjx.kuanjv.com/allm3u8.php?url="
+            "name": "777解析",
+            "type": 0,
+            "url": "https://jx.777jiexi.com/player/?url=",
+            "ext": {
+                "header": {
+                    "User-Agent": ""
+                }
+            }
         },
         {
             "name": "bozrc",
             "type": 0,
             "url": "https://jx.bozrc.com:4433/player/?url=",
             "ext": {
-                "flag": [
-                    "qq",
-                    "腾讯",
-                    "qiyi",
-                    "爱奇艺",
-                    "奇艺",
-                    "youku",
-                    "优酷",
-                    "mgtv",
-                    "芒果",
-                    "letv",
-                    "leshi",
-                    "LS",
-                    "pptv",
-                    "PPTV",
-                    "sohu",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩"
-                ],
                 "header": {
                     "User-Agent": ""
                 }
             }
         },
         {
-            "name": "夜幕",
+            "name": "Player-JY",
             "type": 0,
-            "url": "https://www.yemu.xyz/?url=",
+            "url": "https://jx.playerjy.com/?url=",
             "ext": {
-                "flag": [
-                    "qq",
-                    "腾讯",
-                    "qiyi",
-                    "iqiyi",
-                    "爱奇艺",
-                    "奇艺",
-                    "youku",
-                    "优酷",
-                    "mgtv",
-                    "芒果",
-                    "letv",
-                    "乐视",
-                    "pptv",
-                    "PPTV",
-                    "sohu",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩"
-                ]
+                "header": {
+                    "User-Agent": ""
+                }
             }
         },
         {
-            "name": "6-麒麟",
-            "type": 0,
-            "url": "https://www.cygqw.com/jiexi/jiekou-2/?url="
-        },
-        {
-            "name": "8-OK解析",
+            "name": "OK解析",
             "type": 0,
             "url": "http://okjx.cc/?url=",
             "ext": {
-                "flag": [
-                    "qq",
-                    "腾讯",
-                    "qiyi",
-                    "爱奇艺",
-                    "奇艺",
-                    "youku",
-                    "优酷",
-                    "mgtv",
-                    "芒果",
-                    "letv",
-                    "乐视",
-                    "pptv",
-                    "PPTV",
-                    "sohu",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩"
-                ]
+                "header": {
+                    "User-Agent": ""
+                }
             }
         },
         {
             "name": "OKjx综合",
             "type": 0,
-            "url": "https://okjx.cc/?url="
+            "url": "https://okjx.cc/?url=",
+            "ext": {
+                "header": {
+                    "User-Agent": ""
+                }
+            }
+        },
+        {
+            "name": "OK解析api",
+            "type": 0,
+            "url": "https://api.okjx.cc:3389/jx.php?url=",
+            "ext": {
+                "header": {
+                    "User-Agent": ""
+                }
+            }
+        },
+        {
+            "name": "yparse",
+            "type": 0,
+            "url": "https://jx.yparse.com/index.php?url=",
+            "ext": {
+                "header": {
+                    "User-Agent": ""
+                }
+            }
+        },
+        {
+            "name": "m4410",
+            "type": 0,
+            "url": "https://www.m4410.com/vip.html?url=",
+            "ext": {
+                "header": {
+                    "User-Agent": ""
+                }
+            }
         },
         {
             "name": "m2090",
-            "url": "https://m2090.com/?url=",
             "type": 0,
+            "url": "https://m2090.com/?url=",
             "ext": {
-                "flag": [
-                    "qiyi",
-                    "imgo",
-                    "爱奇艺",
-                    "奇艺",
-                    "qq",
-                    "腾讯",
-                    "youku",
-                    "优酷",
-                    "pptv",
-                    "PPTV",
-                    "letv",
-                    "乐视",
-                    "leshi",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩",
-                    "mgtv",
-                    "芒果",
-                    "sohu",
-                    "xigua",
-                    "fun",
-                    "风行"
-                ],
                 "header": {
                     "User-Agent": "Mozilla/5.0"
                 }
@@ -290,40 +230,18 @@
             }
         },
         {
-            "name": "盘古",
-            "url": "https://www.pangujiexi.cc/jiexi.php?url=",
+            "name": "麒麟",
             "type": 0,
+            "url": "https://www.cygqw.com/jiexi/jiekou-2/?url="
+        },
+        {
+            "name": "BL解析",
+            "type": 0,
+            "url": "https://svip.bljiex.cc/?v=",
             "ext": {
-                "flag": [
-                    "qiyi",
-                    "imgo",
-                    "爱奇艺",
-                    "奇艺",
-                    "qq",
-                    "腾讯",
-                    "youku",
-                    "优酷",
-                    "pptv",
-                    "PPTV",
-                    "letv",
-                    "乐视",
-                    "leshi",
-                    "bilibili",
-                    "哔哩哔哩",
-                    "哔哩",
-                    "mgtv",
-                    "芒果",
-                    "sohu",
-                    "xigua",
-                    "fun",
-                    "风行"
-                ],
                 "header": {
-                    "User-Agent": "Mozilla/5.0"
+                    "User-Agent": ""
                 }
-            },
-            "header": {
-                "User-Agent": "Mozilla/5.0"
             }
         }
     ],
