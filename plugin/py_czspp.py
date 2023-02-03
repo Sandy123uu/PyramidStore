@@ -1,17 +1,17 @@
 # coding=utf-8
 # !/usr/bin/python
 import sys
-import re
 sys.path.append('..')
 from base.spider import Spider
-import urllib.parse
-import json
 import base64
+import hashlib
+import requests
 from Crypto.Cipher import AES
+import urllib
 
 class Spider(Spider):  # 元类 默认的元类 type
     def getName(self):
-        return "创艺影视"
+        return "厂长资源"
 
     def init(self, extend=""):
         print("============{0}============".format(extend))
@@ -20,11 +20,14 @@ class Spider(Spider):  # 元类 默认的元类 type
     def homeContent(self, filter):
         result = {}
         cateManual = {
-            "电影": "1",
-            "剧集": "2",
-            "动漫": "4",
-            "综艺": "3",
-            "纪录片": "30"
+            "豆瓣电影Top250": "dbtop250",
+            "最新电影": "zuixindianying",
+            "电视剧": "dsj",
+            "国产剧": "gcj",
+            "美剧": "meijutt",
+            "韩剧": "hanjutv",
+            "番剧": "fanju",
+            "动漫": "dm"
         }
         classes = []
         for k in cateManual:
@@ -32,31 +35,84 @@ class Spider(Spider):  # 元类 默认的元类 type
                 'type_name': k,
                 'type_id': cateManual[k]
             })
-
         result['class'] = classes
-        if (filter):
-            result['filters'] = self.config['filter']
         return result
 
     def homeVideoContent(self):
+        url = "https://czspp.com"
+        header = {
+            "Connection": "keep-alive",
+            "Referer": url,
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
+        }
+        session = self.getCookie(url,header)
+        rsp = session.get(url, headers=header)
+        root = self.html(self.cleanText(rsp.text))
+        aList = root.xpath("//div[@class='mi_btcon']//ul/li")
+        videos = []
+        for a in aList:
+            name = a.xpath('./a/img/@alt')[0]
+            pic = a.xpath('./a/img/@data-original')[0]
+            mark = a.xpath("./div[@class='hdinfo']/span/text()")[0]
+            sid = a.xpath("./a/@href")[0]
+            sid = self.regStr(sid, "/movie/(\\S+).html")
+            videos.append({
+                "vod_id": sid,
+                "vod_name": name,
+                "vod_pic": pic,
+                "vod_remarks": mark
+            })
         result = {
-            'list': []
+            'list': videos
         }
         return result
 
+    def getCookie(self,url):
+        header = {
+            "Referer": 'https://czspp.com/',
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
+        }
+        session = requests.session()
+        rsp = session.get(url)
+        if '人机验证' in rsp.text:
+            append = self.regStr(rsp.text, 'src=\"(/.*?)\"')
+            nurl = 'https://czspp.com' + append
+            nrsp = session.get(nurl, headers=header)
+            key = self.regStr(nrsp.text, 'var key=\"(.*?)\"')
+            avalue = self.regStr(nrsp.text, 'value=\"(.*?)\"')
+            c = ''
+            for i in range(0, len(avalue)):
+                a = avalue[i]
+                b = ord(a)
+                c = c + str(b)
+            value = hashlib.md5(c.encode()).hexdigest()
+            session.get('https://czspp.com/a20be899_96a6_40b2_88ba_32f1f75f1552_yanzheng_ip.php?type=96c4e20a0e951f471d32dae103e83881&key={0}&value={1}'.format(key, value), headers=header)
+            return session.get(url, headers=header)
+        elif '检测中' in rsp.text:
+            append = self.regStr(rsp.text, 'href =\"(/.*?)\"')
+            session.get('https://czspp.com{0}'.format(append), headers=header)
+            return session.get(url, headers=header)
+        else:
+            return rsp
+
+
+
     def categoryContent(self, tid, pg, filter, extend):
         result = {}
-        header = {"User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36"}
-        url = 'https://www.30dian.cn/vodtype/{0}-{1}.html'.format(tid, pg)
-        rsp = self.fetch(url,headers=header)
+        url = 'https://czspp.com/{0}/page/{1}'.format(tid,pg)
+        rsp = self.getCookie(url)
         root = self.html(self.cleanText(rsp.text))
-        aList = root.xpath("//div[@class='module-list module-lines-list']/div/div")
+        aList = root.xpath("//div[contains(@class,'bt_img mi_ne_kd mrb')]/ul/li")
         videos = []
         for a in aList:
-            name = name = a.xpath("./div[@class='module-item-cover']/div/a/@title")[0]
-            pic = a.xpath("./div[@class='module-item-cover']/div/img/@data-src")[0]
-            mark = a.xpath("./div[@class='module-item-text']/text()")[0]
-            sid = self.regStr(reg=r'voddetail\/(.*?).html', src=a.xpath("./div[@class='module-item-cover']/div/a/@href")[0])
+            name = a.xpath('./a/img/@alt')[0]
+            pic = a.xpath('./a/img/@data-original')[0]
+            mark = a.xpath(".//div[@class='jidi']/span/text()")
+            if mark ==[]:
+                mark = a.xpath("./div[@class='hdinfo']/span/text()")
+            mark = mark[0]
+            sid = a.xpath("./a/@href")[0]
+            sid = self.regStr(sid, "/movie/(\\S+).html")
             videos.append({
                 "vod_id": sid,
                 "vod_name": name,
@@ -65,20 +121,20 @@ class Spider(Spider):  # 元类 默认的元类 type
             })
         result['list'] = videos
         result['page'] = pg
-        result['pagecount'] = 999
-        result['limit'] = 5
-        result['total'] = 9999
+        result['pagecount'] = 9999
+        result['limit'] = 90
+        result['total'] = 999999
         return result
 
     def detailContent(self, array):
         tid = array[0]
-        url = 'https://www.30dian.cn/voddetail/{0}.html'.format(tid)
-        header = {"User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36"}
-        rsp = self.fetch(url,headers=header)
+        url = 'https://czspp.com/movie/{0}.html'.format(tid)
+        rsp = self.getCookie(url)
         root = self.html(self.cleanText(rsp.text))
-        divContent = root.xpath("//div[@class='box view-heading']")[0]
-        title = divContent.xpath(".//div[@class='video-info-header']/h1/text()")[0].strip()
-        pic = divContent.xpath(".//div[@class='module-item-pic']/img/@data-src")[0]
+        node = root.xpath("//div[@class='dyxingq']")[0]
+        pic = node.xpath(".//div[@class='dyimg fl']/img/@src")[0]
+        title = node.xpath('.//h1/text()')[0]
+        detail = root.xpath(".//div[@class='yp_context']//p/text()")[0]
         vod = {
             "vod_id": tid,
             "vod_name": title,
@@ -89,31 +145,45 @@ class Spider(Spider):  # 元类 默认的元类 type
             "vod_remarks": "",
             "vod_actor": "",
             "vod_director": "",
-            "vod_content": ""
+            "vod_content": detail
         }
+        infoArray = node.xpath(".//ul[@class='moviedteail_list']/li")
+        for info in infoArray:
+            content = info.xpath('string(.)')
+            if content.startswith('地区'):
+                tpyeare = ''
+                for inf in info:
+                    tn = inf.text
+                    tpyeare = tpyeare +'/'+'{0}'.format(tn)
+                    vod['vod_area'] = tpyeare.strip('/')
+            if content.startswith('年份'):
+                vod['vod_year'] = content.replace("年份：","")
+            if content.startswith('主演'):
+                tpyeact = ''
+                for inf in info:
+                    tn = inf.text
+                    tpyeact = tpyeact +'/'+'{0}'.format(tn)
+                    vod['vod_actor'] = tpyeact.strip('/')
+            if content.startswith('导演'):
+                tpyedire = ''
+                for inf in info:
+                    tn = inf.text
+                    tpyedire  = tpyedire  +'/'+'{0}'.format(tn)
+                    vod['vod_director'] = tpyedire .strip('/')
         vod_play_from = '$$$'
-        playFrom = []
-        titles = root.xpath(".//div[contains(@class,'module-player-tab')]/div[@class='module-tab-items']/div[@class='module-tab-content']")[0]
-        vodHeader = titles.xpath("./div/span/text()")
-        for v in vodHeader:
-            playFrom.append(self.cleanText(v).replace(" ", ""))
+        playFrom = ['厂长']
         vod_play_from = vod_play_from.join(playFrom)
         vod_play_url = '$$$'
         playList = []
-        vodList = root.xpath(".//div[@class='module']/div[contains(@id,'glist-')]")
+        vodList = root.xpath("//div[@class='paly_list_btn']")
         for vl in vodList:
             vodItems = []
-            aList = vl.xpath(".//div[@class='scroll-content']/a")
-            if len(aList) <= 0:
-                name = '无法找到播放源'
-                tId = '00000'
+            aList = vl.xpath('./a')
+            for tA in aList:
+                href = tA.xpath('./@href')[0]
+                name = tA.xpath('./text()')[0].replace('\xa0','')
+                tId = self.regStr(href, '/v_play/(\\S+).html')
                 vodItems.append(name + "$" + tId)
-            else:
-                for tA in aList:
-                    href = tA.xpath('./@href')[0]
-                    name = tA.xpath("./span/text()")[0].strip()
-                    tId = self.regStr(href, '/vodplay/(\\S+).html')
-                    vodItems.append(name + "$" + tId)
             joinStr = '#'
             joinStr = joinStr.join(vodItems)
             playList.append(joinStr)
@@ -129,28 +199,39 @@ class Spider(Spider):  # 元类 默认的元类 type
         return result
 
     def searchContent(self, key, quick):
-        url = 'https://www.30dian.cn/vodsearch/-------------.html?wd={0}'.format(key)
-        header = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36"}
-        rsp = self.fetch(url, headers=header)
+        url = 'https://czspp.com/xssearch?q={0}'.format(urllib.parse.quote(key))
+        rsp = self.getCookie(url)
         root = self.html(self.cleanText(rsp.text))
-        aList = root.xpath("//div[@class='module-items']/div")
+        vodList = root.xpath("//div[contains(@class,'mi_ne_kd')]/ul/li/a")
         videos = []
-        for a in aList:
-            name = a.xpath(".//div[@class='module-item-pic']/img/@alt")[0]
-            pic = a.xpath(".//div[@class='module-item-pic']/img/@data-src")[0]
-            sid = a.xpath(".//div[@class='video-info']/div[@class='video-info-header']/a/@href")[0]
-            sid = self.regStr(sid,'/voddetail/(\\S+).html')
+        for vod in vodList:
+            name = vod.xpath('./img/@alt')[0]
+            pic = vod.xpath('./img/@data-original')[0]
+            href = vod.xpath('./@href')[0]
+            tid = self.regStr(href, 'movie/(\\S+).html')
+            res = vod.xpath('./div[@class="jidi"]/span/text()')
+            if len(res) == 0:
+                remark = '全1集'
+            else:
+                remark = vod.xpath('./div[@class="jidi"]/span/text()')[0]
             videos.append({
-                "vod_id": sid,
+                "vod_id": tid,
                 "vod_name": name,
                 "vod_pic": pic,
-                "vod_remarks": ''
+                "vod_remarks": remark
             })
         result = {
             'list': videos
         }
         return result
+    config = {
+        "player": {},
+        "filter": {}
+    }
+    header = {
+        "Referer": "https://czspp.com/",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36"
+    }
     def parseCBC(self, enc, key, iv):
         keyBytes = key.encode("utf-8")
         ivBytes = iv.encode("utf-8")
@@ -161,45 +242,42 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def playerContent(self, flag, id, vipFlags):
         result = {}
-        header = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36"}
-        if id == '00000':
-            return {}
-        url = 'https://www.30dian.cn/vodplay/{0}.html'.format(id)
-        rsp = self.fetch(url, headers=header)
-        jo = self.regStr(reg='var player_data=(.*?)</script>', src=self.cleanText(rsp.text))
-        scripts = json.loads(jo)
-        ukey = scripts['url']
-        pf = scripts['from']
-        purl = urllib.parse.unquote(ukey)
-        if purl.startswith('http'):
-            purl = purl
-            if pf == 'wjm3u8':
-                prsp = self.fetch(purl, headers=header)
-                purle = prsp.text.strip('\n').split('\n')[-1]
-                purls = re.findall(r"http.*://.*?/", purl)[0].strip('/')
-                purl = purls + purle
+        url = 'https://czspp.com/v_play/{0}.html'.format(id)
+        rsp = self.getCookie(url)
+        pat = '\\"([^\\"]+)\\";var [\\d\\w]+=function dncry.*md5.enc.Utf8.parse\\(\\"([\\d\\w]+)\\".*md5.enc.Utf8.parse\\(([\\d]+)\\)'
+        html = rsp.text
+        content = self.regStr(html, pat)
+        if content == '':
+            str3 = url
+            pars = 1
+            header = {
+                      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
+                      }
         else:
-            scrurl = 'https://vip.30dian.cn/?url={0}'.format(purl)
-            script = self.fetch(scrurl,headers=header)
-            html = script.text
-            pat = 'var le_token = \\"([\\d\\w]+)\\"'
-            cpat = 'getVideoInfo\\(\\"(.*)\\"\\)'
-            content = self.regStr(html, cpat)
-            iv = self.regStr(html, pat)
-            key = 'A42EAC0C2B408472'
-            purl = self.parseCBC(base64.b64decode(content), key, iv).decode()
-        result["parse"] = 0
-        result["playUrl"] = ''
-        result["url"] = purl
-        result["header"] = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"}
+            key = self.regStr(html, pat, 2)
+            iv = self.regStr(html, pat, 3)
+            decontent = self.parseCBC(base64.b64decode(content), key, iv).decode()
+            urlPat = 'video: \\{url: \\\"([^\\\"]+)\\\"'
+            vttPat = 'subtitle: \\{url:\\\"([^\\\"]+\\.vtt)\\\"'
+            str3 = self.regStr(decontent, urlPat)
+            str4 = self.regStr(decontent, vttPat)
+            self.loadVtt(str3)
+            pars = 0
+            header = ''
+            if len(str4) > 0:
+                result['subf'] = '/vtt/utf-8'
+                result['subt'] = ''
+        result = {
+            'parse': pars,
+            'playUrl': '',
+            'url': str3,
+            'header': header
+        }
         return result
 
-    config = {
-        "player": {},
-        "filter": {}
-    }
-    header = {}
+
+    def loadVtt(self, url):
+        pass
 
     def isVideoFormat(self, url):
         pass
@@ -208,11 +286,5 @@ class Spider(Spider):  # 元类 默认的元类 type
         pass
 
     def localProxy(self, param):
-        action = {
-            'url': '',
-            'header': '',
-            'param': '',
-            'type': 'string',
-            'after': ''
-        }
+        action = {}
         return [200, "video/MP2T", action, ""]
