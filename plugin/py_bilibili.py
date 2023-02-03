@@ -1703,12 +1703,12 @@ class Spider(Spider):
             secondPList = [follow, triple, like, coin1, coin2, unfollow, unlike]
             if mlid:
                 favdel = '✩取消收藏${0}_del_notplay_fav'.format(mlid)
-                secondPList.insert(2, favdel)
+                secondPList.append(favdel)
             for fav in self.userConfig.get("fav_list", []):
                 folder = fav['n'].replace("#", "﹟").replace("$", "﹩")
                 ids = fav['v']
                 fav = '⭐{0}${1}_add_notplay_fav'.format(folder, ids)
-                secondPList.insert(2, fav)
+                secondPList.append(fav)
             defaultQn = int(self.userConfig['vodDefaultQn'])
             if defaultQn > 116:
                 secondPList.append('⚠️限高1080$116_notplay_vodTMPQn')
