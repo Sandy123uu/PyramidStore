@@ -139,8 +139,8 @@ class Spider(Spider):  # 元类 默认的元类 type
         for a in aList:
             name = a.xpath(".//div[@class='module-item-pic']/img/@alt")[0]
             pic = a.xpath(".//div[@class='module-item-pic']/img/@data-src")[0]
-            sid = a.xpath(".//div[@class='module-item-pic']/a/@href")[0]
-            sid = self.regStr(sid,'/vodplay/(\\S+).html')
+            sid = a.xpath(".//div[@class='video-info']/div[@class='video-info-header']/a/@href")[0]
+            sid = self.regStr(sid,'/voddetail/(\\S+).html')
             videos.append({
                 "vod_id": sid,
                 "vod_name": name,
