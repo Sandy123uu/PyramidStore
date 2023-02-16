@@ -222,7 +222,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         customHeader = self.header.copy()
         customHeader['x-share-token'] = token
         customHeader['authorization'] = self.authorization
-        url = 'https://api.aliyundrive.com/v2/file/get_share_link_video_preview_play_info'
+        url = 'https://api.aliyundrive.com/adrive/v2/file/get_video_preview_play_info_by_share'
         if category == 'video':
             rsp = requests.post(url, json=params, headers=customHeader)
             rspJo = json.loads(rsp.text)
@@ -254,7 +254,7 @@ class Spider(Spider):  # 元类 默认的元类 type
         customHeader = self.header.copy()
         customHeader['x-share-token'] = token
         customHeader['authorization'] = self.authorization
-        url = 'https://api.aliyundrive.com/v2/file/get_share_link_video_preview_play_info'
+        url = 'https://api.aliyundrive.com/adrive/v2/file/get_video_preview_play_info_by_share'
         rsp = requests.post(url, json=params, headers=customHeader)
         rspJo = json.loads(rsp.text)
         quality = ['FHD', 'HD', 'SD']
