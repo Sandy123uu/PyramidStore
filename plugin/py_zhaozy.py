@@ -1,9 +1,8 @@
-﻿#coding=utf-8
+#coding=utf-8
 #!/usr/bin/python
 import sys
 sys.path.append('..') 
 from base.spider import Spider
-from requests import session, utils
 
 class Spider(Spider):
 	def getDependence(self):
@@ -21,44 +20,25 @@ class Spider(Spider):
 	def homeContent(self,filter):
 		result = {}
 		return result
-
 	def homeVideoContent(self):
 		result = {}
 		return result
-
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
 		return result
-
 	header = {
 		"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36",
 		"Referer": "https://zhaoziyuan.la/"
 	}
-
-	cookies = ''
-	def getCookie(self):
-		header = {
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36",
-			"Referer": "https://zhaoziyuan.la/login.html",
-			"Origin": "https://zhaoziyuan.la/"
-		}
-		data = {
-			'username': '输入用户名',
-			'password': '输入密码'
-		}
-		rsp = self.post('https://zhaoziyuan.la/logiu.html', data=data, headers=header)
-		self.cookies = rsp.cookies
-		return rsp.cookies
-
 	def detailContent(self,array):
 		tid = array[0]
+		print(self.getName())
 		pattern = '(https://www.aliyundrive.com/s/[^\"]+)'
 		url = self.regStr(tid,pattern)
 		if len(url) > 0:
 			return self.ali.detailContent(array)
-		if len(self.cookies) <= 0:
-			self.getCookie()
-		rsp = self.fetch('https://zhaoziyuan.la/'+tid, cookies=self.cookies)
+
+		rsp = self.fetch('https://zhaoziyuan.la/'+tid)
 		url = self.regStr(rsp.text,pattern)
 		if len(url) == 0:
 			return ""
@@ -71,10 +51,10 @@ class Spider(Spider):
 			'1':'视频'
 		}
 		ja = []
+		if len(self.cookies) <= 0:
+			self.getCookie()
 		for tKey in map.keys():
-			url = "https://zhaoziyuan.la/so?filename={0}&t={1}".format(key, tKey)
-			if len(self.cookies) <= 0:
-				self.getCookie()
+			url = "https://zhaoziyuan.la/so?filename={0}&t={1}".format(key,tKey)
 			rsp = self.fetch(url, headers=self.header, cookies=self.cookies)
 			root = self.html(self.cleanText(rsp.text))
 			aList = root.xpath("//li[@class='clear']/div/div[@class='news_text']/a")
@@ -93,6 +73,18 @@ class Spider(Spider):
 			'list':ja
 		}
 		return result
+
+	cookies = ''
+	def getCookie(self, tag):
+		header = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36",
+			"Referer": "https://zhaoziyuan.la/login.html",
+			"Origin": "https://zhaoziyuan.la/"
+		}
+		logininfo = {'username': 'Unbaked4136', 'password': '4hzxQkB9yxX5EP'}
+		r = requests.post('https://zhaoziyuan.la/logiu.html', data=logininfo, headers=header, timeout=5)
+		self.cookies = r.cookies
+		return r.cookies
 
 	def playerContent(self,flag,id,vipFlags):
 		return self.ali.playerContent(flag,id,vipFlags)
