@@ -21,9 +21,9 @@ class Spider(Spider):
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
-        'raw_cookie_vip': "buvid3=908FE240-2A26-34DB-F165-D3C47593AE2C40797infoc; CURRENT_FNVAL=4048; _uuid=BFB910625-E3D4-5578-11C1-476DEC54DCE342607infoc; buvid4=11AAA057-239C-44FF-61D6-4871335E59B145245-022060422-ydfccpBcvbRqXU//8J/8mg==; CURRENT_BLACKGAP=0; blackside_state=0; fingerprint=5b65597340b791eafe510854e1aee762; buvid_fp_plain=undefined; buvid_fp=5b65597340b791eafe510854e1aee762; hit-dyn-v2=1; innersign=0; b_nut=100; i-wanna-go-back=-1; b_lsid=109B74D10D_1854FE03A1B; SESSDATA=f9a14e23,1687634471,081c9*c2; bili_jct=bf318e14a5134987277d0a03c6deeae0; DedeUserID=26057693; DedeUserID__ckMd5=e6e06406457f3048; sid=oblopuch; PVID=1; b_ut=5",
-        #主页默认显示20图
-        'maxHomeVideoContent': '20',
+        'raw_cookie_vip': "",
+        #主页默认显示3图
+        'maxHomeVideoContent': '3',
         #收藏标签默认显示追番1，追剧2，默认收藏夹0
         'favMode': '0',
         #部分视频列表分页，限制每次加载数量
@@ -31,9 +31,9 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '116',
+        'vodDefaultQn': '80',
         #视频默认解码ID
-        'vodDefaultCodec': '12',
+        'vodDefaultCodec': '7',
         #音频默认码率ID
         'vodDefaultAudio': '30280',
         #获取视频热门评论
@@ -41,7 +41,7 @@ class Spider(Spider):
         #从正片中拆分出番剧的预告
         'hide_bangumi_preview': True,
         #登陆会员账号后，影视播放页不显示会员专享的标签，更简洁
-        'hide_bangumi_vip_badge': False,
+        'hide_bangumi_vip_badge': True,
         #番剧（热门）列表使用横图
         'bangumi_horizontal_cover': True,
         #非会员播放会员专享视频时，添加一个页面可以使用解析源，解析源自行解决
@@ -49,13 +49,13 @@ class Spider(Spider):
         #付费视频添加一个页面可以使用解析，解析源自行解决
         'bangumi_pay_parse': True,
         #是否显示直播标签筛选中分区的细化标签, 0为不显示，1为显示
-        'showLiveFilterTag': '1',
+        'showLiveFilterTag': '0',
         #主页标签排序, 未登录或cookie失效时自动隐藏动态、收藏、关注、历史
         'cateManual': [
-            "动态",
             "推荐",
             "影视",
             "直播",
+            "动态",
             "频道",
             "收藏",
             "关注",
@@ -98,12 +98,7 @@ class Spider(Spider):
     ]
     
     #在搜索标签的筛选中固定显示搜索词
-    focus_on_search_key = [
-        '哈利波特',
-        '演唱会',
-        'MV',
-        '假窗'
-    ]
+    focus_on_search_key = []
 
     def getName(self):
         return "哔哩哔哩"
@@ -1675,12 +1670,12 @@ class Spider(Spider):
         AllPt = []
         AllPu = []
         if pages:
-            AllPt = ['视频分集']
+            AllPt = ['B站']
             if _is_stein_gate:
                 AllPt = ['互动视频【快搜继续】']
             AllPu = ['#'.join(self.pool.map(self.get_normal_episodes, pages))]
         if secondP:
-            AllPt.append('点赞投币收藏')
+            AllPt.append('做点什么')
             AllPu.extend(secondP)
         if jo_Related:
             AllPt.append('相关推荐')
@@ -1766,8 +1761,7 @@ class Spider(Spider):
         qqfollow = '悄悄关注$3_notplay_follow'
         spfollow = '特别关注$-10_notplay_special_follow'
         unspfollow = '取消特别关注$0_notplay_special_follow'
-        Space = ' $_'
-        doWhat = [follow, spfollow, qqfollow, Space, Space, Space, unfollow, unspfollow]
+        doWhat = [first, follow, qqfollow, spfollow, unfollow, unspfollow]
         doWhat = '#'.join(doWhat)
         self.get_up_info_event.wait()
         up_info = self.up_info[mid]
@@ -1780,7 +1774,7 @@ class Spider(Spider):
             "vod_actor": "👥 " + up_info['fans'] + "　🎬 " + up_info['vod_count'] + "　👍 " + up_info['like_num'],
             "vod_director": '🆙 ' + up_info['name'] + "　" + up_info['following'] + '　UID：' +str(mid),
             "vod_content": up_info['desc'],
-            'vod_play_from': '关注TA$$$动态标签筛选查看视频投稿'
+            'vod_play_from': '关注TA$$$视频投稿在动态标签——筛选——上个UP，选择后查看'
         }
         vod['vod_play_url'] = doWhat
 
@@ -2062,8 +2056,8 @@ class Spider(Spider):
         ZhuiPf = []
         ZhuiPu = []
         if self.userid:
-            ZhuiPf = ['追番剧']
-            ZhuiPu = '❤追番剧$add_notplay_zhui#💔取消追番剧$del_notplay_zhui'
+            ZhuiPf = ['做点什么']
+            ZhuiPu = '是否追番剧$ #❤追番剧$add_notplay_zhui#💔取消追番剧$del_notplay_zhui'
             defaultQn = int(self.userConfig['vodDefaultQn'])
             if defaultQn > 116:
                 ZhuiPu += '#⚠️限高1080$116_notplay_vodTMPQn'
@@ -2196,7 +2190,7 @@ class Spider(Spider):
                 first = '是否关注$ '
                 follow = '➕关注$1_notplay_follow'
                 unfollow = '➖取关$2_notplay_follow'
-                secondPList = [follow, unfollow]
+                secondPList = [first, follow, unfollow]
                 secondP = '#'.join(secondPList)
             playFrom = get_live_api2_playurl.result().get('From', [])
             playUrl = get_live_api2_playurl.result().get('url', [])
