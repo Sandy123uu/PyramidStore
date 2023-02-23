@@ -23,7 +23,7 @@ class Spider(Spider):
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
         'raw_cookie_vip': "",
         #主页默认显示3图
-        'maxHomeVideoContent': '3',
+        'maxHomeVideoContent': '20',
         #收藏标签默认显示追番1，追剧2，默认收藏夹0
         'favMode': '0',
         #部分视频列表分页，限制每次加载数量
