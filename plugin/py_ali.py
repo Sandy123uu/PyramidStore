@@ -464,11 +464,12 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def login(self):
         self.localTime = int(time.time())
-        url = 'https://api.aliyundrive.com/token/refresh'
+        url = 'https://auth.aliyundrive.com/v2/account/token'
         if len(self.authorization) == 0 or self.timeoutTick - self.localTime <= 600:
             token = requests.get('https://cjk.lm317379829.repl.co/CJK/token.txt').text.replace('\n','').replace(' ','')
             form = {
-                'refresh_token': token
+                'refresh_token': token,
+                'grant_type': 'refresh_token'
             }
             rsp = requests.post(url, json=form, headers=self.header)
             jo = json.loads(rsp.text)
