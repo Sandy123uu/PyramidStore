@@ -22,8 +22,8 @@ class Spider(Spider):
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
         'raw_cookie_vip': "buvid3=908FE240-2A26-34DB-F165-D3C47593AE2C40797infoc; CURRENT_FNVAL=4048; _uuid=BFB910625-E3D4-5578-11C1-476DEC54DCE342607infoc; buvid4=11AAA057-239C-44FF-61D6-4871335E59B145245-022060422-ydfccpBcvbRqXU//8J/8mg==; CURRENT_BLACKGAP=0; blackside_state=0; fingerprint=5b65597340b791eafe510854e1aee762; buvid_fp_plain=undefined; buvid_fp=5b65597340b791eafe510854e1aee762; hit-dyn-v2=1; innersign=0; b_nut=100; i-wanna-go-back=-1; b_lsid=109B74D10D_1854FE03A1B; SESSDATA=f9a14e23,1687634471,081c9*c2; bili_jct=bf318e14a5134987277d0a03c6deeae0; DedeUserID=26057693; DedeUserID__ckMd5=e6e06406457f3048; sid=oblopuch; PVID=1; b_ut=5",
-        #主页默认显示10图
-        'maxHomeVideoContent': '10',
+        #主页默认显示20图
+        'maxHomeVideoContent': '20',
         #收藏标签默认显示追番1，追剧2，默认收藏夹0
         'favMode': '0',
         #部分视频列表分页，限制每次加载数量
@@ -1820,9 +1820,11 @@ class Spider(Spider):
             'd': {
                 '3': '3图',
                 '4': '4图',
+                '5': '5图',
                 '6': '6图',
                 '8': '8图',
                 '10': '10图',
+                '20': '20图',
             }
         },{
             'f': '视频画质',
