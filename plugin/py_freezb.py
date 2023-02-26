@@ -37,7 +37,7 @@ class Spider(Spider):
 
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
-		url = 'http://www.freezb.live/'
+		url = 'http://www.fifa2022.tv/'
 		rsp = self.fetch(url)
 		html = self.html(rsp.text)
 		aList = html.xpath("//tr[@class='match_main']")
