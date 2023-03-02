@@ -17,7 +17,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20230217_1",
+        'currentVersion': "20230302_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -31,7 +31,7 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '116',
+        'vodDefaultQn': '126',
         #视频默认解码ID
         'vodDefaultCodec': '12',
         #音频默认码率ID
@@ -149,6 +149,7 @@ class Spider(Spider):
         self.dump_config_lock.release()
 
     pool = ThreadPoolExecutor(max_workers=8)
+    task_pool = []
     # 主页
     def homeContent(self, filter):
         self.pool.submit(self.add_live_filter)
@@ -680,7 +681,7 @@ class Spider(Spider):
     def get_found(self, tid, rid, pg):
         result = {}
         if tid == '推荐':
-            url = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?fresh_type=4&feed_version=V8&fresh_idx={0}&fresh_idx_1h={0}&brush={0}&homepage_ver=1&ps={1}'.format(pg, self.userConfig['page_size'])
+            url = 'https://api.bilibili.com/x/web-interface/index/top/feed/rcmd?fresh_type=4&feed_version=V8&fresh_idx={0}&fresh_idx_1h={0}&brush={0}&homepage_ver=1&ps={1}'.format(pg, self.userConfig['page_size'])
             rsp = self._get_sth(url)
         else:
             url = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid={0}&type={1}'.format(rid, tid)
@@ -876,7 +877,7 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        url = 'https://api.bilibili.com/x/space/arc/search?mid={0}&pn={1}&ps={2}&order={3}'.format(mid, tmp_pg, self.userConfig['page_size'], order)
+        url = 'https://api.bilibili.com/x/space/wbi/arc/search?mid={0}&pn={1}&ps={2}&order={3}'.format(mid, tmp_pg, self.userConfig['page_size'], order)
         rsp = self._get_sth(url, 'fake')
         content = rsp.text
         jo = json.loads(content)
@@ -1475,7 +1476,7 @@ class Spider(Spider):
             sec_title = self.detailContent_args['season_title']
         sec_title = sec_title.replace("#", "﹟").replace("$", "﹩")
         episodes = section.get('episodes')
-        playUrl = '#'.join(self.pool.map(self.get_normal_episodes, episodes))
+        playUrl = '#'.join(map(self.get_normal_episodes, episodes))
         result = (sec_title, playUrl)
         return result
 
@@ -2219,14 +2220,13 @@ class Spider(Spider):
         return result
 
     search_key = ''
-    search_task = []
     
     def searchContent(self, key, quick):
         if not self.session_fake.cookies:
             self.pool.submit(self.getFakeCookie, True)
-        for t in self.search_task:
+        for t in self.task_pool:
             t.cancel()
-        self.search_task = []
+        self.task_pool = []
         self.search_key = key
         mid = self.detailContent_args.get('mid', '')
         if quick and mid:
@@ -2234,12 +2234,12 @@ class Spider(Spider):
         types = {'video': '','media_bangumi': '番剧: ', 'media_ft': '影视: ', 'bili_user': '用户: ', 'live': '直播: '}
         for type, value in types.items():
             t = self.pool.submit(self.get_search_content, key = key, pg = value, duration_diff = 0, order = '', type = type, ps = self.userConfig['page_size'])
-            self.search_task.append(t)
+            self.task_pool.append(t)
         result = {'list': []}
-        for t in as_completed(self.search_task):
+        for t in as_completed(self.task_pool):
             res = t.result().get('list', [])
             result['list'].extend(res)
-            self.search_task.remove(t)
+            self.task_pool.remove(t)
         if quick:
             if mid:
                 result['list'] = self.detailContent_args.get('interaction', []) + get_up_videos.result().get('list', []) + self.detailContent_args.get('Reply_jump', []) + result['list']
@@ -2581,14 +2581,12 @@ class Spider(Spider):
                         Qn_available_lis = [media_lis[qn_codec.index(str(q))]]
                         break
                     Qn_available_lis.append(media_lis[qn_codec.index(str(q))])
-        result = ''.join(map(self.get_dash_media, Qn_available_lis))
-        if result:
-            result = f"""
+        result = f"""
     <AdaptationSet>
-      <ContentComponent contentType="{mediaType}"/>{result}
+      <ContentComponent contentType="{mediaType}"/>{''.join(map(self.get_dash_media, Qn_available_lis))}
     </AdaptationSet>"""
         return result
-    
+
     get_dash_event = threading.Event()
     def get_dash(self, ja):
         duration = ja.get('duration')
@@ -2658,7 +2656,7 @@ class Spider(Spider):
             if ep:
                 id += '_' + ep
                 ids.append(ep)
-        url = 'https://api.bilibili.com/x/player/playurl?avid={}&cid={}&qn=116&fnval=4048&fnver=0&fourk=1'.format(aid, cid)
+        url = 'https://api.bilibili.com/x/player/playurl?avid={}&cid={}&fnval=4048&fnver=0&fourk=1'.format(aid, cid)
         if 'ep' in id:
             if 'parse' in id:
                 test = list(x for x in map(lambda x: x if 'ep' in x else None, ids) if x is not None)
@@ -2669,7 +2667,7 @@ class Spider(Spider):
                 result['jx'] = '1'
                 result["header"] = str({"User-Agent": self.header["User-Agent"]})
                 return result
-            url = 'https://api.bilibili.com/pgc/player/web/playurl?aid={}&cid={}&qn=116&fnval=4048&fnver=0&fourk=1'.format(aid, cid)
+            url = 'https://api.bilibili.com/pgc/player/web/playurl?aid={}&cid={}&fnval=4048&fnver=0&fourk=1'.format(aid, cid)
         rsp = self._get_sth(url, 'vip')
         jRoot = json.loads(rsp.text)
         if jRoot['code'] == 0:
@@ -2800,7 +2798,7 @@ class Spider(Spider):
         'Accept': 'application/json, text/plain, */*',
         'Origin': 'https://www.bilibili.com',
         'Referer': 'https://www.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15'
     }
 
     def localProxy(self, param):
