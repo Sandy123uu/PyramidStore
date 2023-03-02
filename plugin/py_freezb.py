@@ -37,23 +37,35 @@ class Spider(Spider):
 
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
-		url = 'http://www.freezb.live/'
+		url = 'http://www.fifa2022.tv/'
 		rsp = self.fetch(url)
 		html = self.html(rsp.text)
-		aList = html.xpath("//tr[@class='match_main']")
+		aList = html.xpath("//tr[@class='against']")
 		videos = []
 		img = 'https://s1.ax1x.com/2022/10/07/x3NPUO.png'
 		for a in aList:
-			urlList = a.xpath("./td[@class='update_data live_link']/a")
-			stat = a.xpath("./td[contains(@style, 'font-weight:bold')]/sapn/@title")[0]
-			time = a.xpath("./td[contains(@style, 'font-weight:bold')]/sapn/text()")[0]
-			if '比分' not in urlList[0].xpath("./text()")[0] and stat == '直播中':
-				remark = a.xpath(".//p[@class='raceclass matchcolor']/@title")[0].replace('直播','') + '|' + time
-				name = a.xpath("string(./td[4])").replace(' ','').replace('\tVS','VS')
-				if 'VS' not in name:
-					names = name.split('\t')
-					remark = names[0] + '|' + time
-					name = names[-1].replace('vs','VS')
+			urlList = a.xpath("./td[@class='live_link']/a")
+			time = a.xpath("./td[@class='tixing']/@t")[0].split(' ')[1]
+			stat = a.xpath("./td/div[contains(@class, 'status')]/text()")
+			if stat != []:
+				stat = stat[0]
+			else:
+				stat = '未开始'
+			if '比分' not in urlList[0].xpath("./text()")[0] and stat != '结束':
+				remark = a.xpath("./td[@class='matcha']/a/text()")[0] + '|' + time
+				teams = a.xpath("./td[@class='teama']/a/strong/text()")
+				if teams != []:
+					name = teams[0].strip('\t').strip() + 'VS' + teams[1].strip('\t').strip()
+				else:
+					nameList = a.xpath("./td[5]/text()")[0].split(' ')
+					names = []
+					for nL in nameList:
+						if nL != '' and nL.lower() != 'vs':
+							names.append(nL)
+					if len(names) < 3:
+						name = names[0] + 'VS' + name[1]
+					else:
+						name = names[-2] + 'VS' + name[-1]
 				aid = ''
 				for url in urlList:
 					title = url.xpath("./text()")[0]
@@ -134,7 +146,7 @@ class Spider(Spider):
 		else:
 			aurl = re.search(r"(.*)/", phpurl).group(1) + re.search(r'src=\"..(.*?)\"', rsp.text.replace("\n",'').replace("\r",'')).group(1)
 			aheaders = {
-				"Referer": phpurl,
+				"Referer": url,
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
 			}
 			r = self.fetch(aurl, headers=aheaders, cookies=rsp.cookies)
