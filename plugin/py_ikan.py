@@ -169,14 +169,11 @@ class Spider(Spider):
 		}
 		result = {}
 		url = 'https://ikanys.tv/vodplay/{0}/'.format(id)
-		rsp = self.fetch(url)
-		info = json.loads(self.regStr(reg=r'var player_data=(.*?)</script>', src=self.cleanText(rsp.text)))
-		string = info['url'][8:len(info['url'])]
-		substr = base64.b64decode(string).decode('UTF-8')
-		str = substr[8:len(substr) - 8]
-		parse = 0
-		purl = str
-		if purl.startswith('ikanm3u8'):
+		rsp = self.fetch(url, headers=header)
+		info = json.loads(self.regStr(reg=r'var player_aaaa=(.*?)</script>', src=self.cleanText(rsp.text)))
+		if info['url'].startswith('http'):
+			purl = info['url']
+		else:
 			parse = 1
 			purl = url
 		result["parse"] = parse
