@@ -44,8 +44,11 @@ class Spider(Spider):
 
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
-		url = 'https://ikan6.vip/vodshow/{}--------{}---/'.format(tid,pg)
-		rsp = self.fetch(url)
+		header = {
+			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"}
+		url = 'https://ikanys.tv/vodshow/{}--------{}---/'.format(tid,pg)
+		session= self.verifyCode('show')
+		rsp = session.get(url, headers=header)
 		html = self.html(rsp.text)
 		aList = html.xpath("//div[@class='module']/a")
 		videos = []
@@ -71,7 +74,7 @@ class Spider(Spider):
 
 	def detailContent(self,array):
 		aid = array[0]
-		url = 'https://ikan6.vip/voddetail/{0}/'.format(aid)
+		url = 'https://ikanys.tv/voddetail/{0}/'.format(aid)
 		rsp = self.fetch(url)
 		html = self.html(rsp.text)
 		node = html.xpath("//div[@class='module-main']")[0]
@@ -112,17 +115,18 @@ class Spider(Spider):
 		}
 		return result
 
-	def verifyCode(self):
+	def verifyCode(self,tag):
 		retry = 10
 		header = {
-			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"}
+			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+		}
 		while retry:
 			try:
 				session = requests.session()
-				img = session.get('https://ikan6.vip/index.php/verify/index.html?', headers=header).content
+				img = session.get('https://ikanys.tv/index.php/verify/index.html?', headers=header).content
 				code = session.post('https://api.nn.ci/ocr/b64/text', data=base64.b64encode(img).decode()).text
-				res = session.post(url=f"https://ikan6.vip/index.php/ajax/verify_check?type=search&verify={code}",
-								   headers=header).json()
+				'https://ikanys.tv/index.php/ajax/verify_check?type=show&verify=0072'
+				res = session.post(url=f"https://ikanys.tv/index.php/ajax/verify_check?type={tag}&verify={code}", headers=header).json()
 				if res["msg"] == "ok":
 					return session
 			except Exception as e:
@@ -132,9 +136,12 @@ class Spider(Spider):
 
 	def searchContent(self,key,quick):
 		result = {}
-		url = 'https://ikan6.vip/vodsearch/-------------/?wd={0}'.format(key)
-		session = self.verifyCode()
-		rsp = session.get(url)
+		header = {
+			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+		}
+		url = 'https://ikanys.tv/vodsearch/-------------/?wd={0}'.format(key)
+		session = self.verifyCode('search')
+		rsp = session.get(url, headers=header)
 		root = self.html(rsp.text)
 		vodList = root.xpath("//div[@class='module-items module-card-items']/div")
 		videos = []
@@ -161,7 +168,7 @@ class Spider(Spider):
 			"Referer": "https://ikanys.tv/"
 		}
 		result = {}
-		url = 'https://ikan6.vip/vodplay/{0}/'.format(id)
+		url = 'https://ikanys.tv/vodplay/{0}/'.format(id)
 		rsp = self.fetch(url)
 		info = json.loads(self.regStr(reg=r'var player_data=(.*?)</script>', src=self.cleanText(rsp.text)))
 		string = info['url'][8:len(info['url'])]
