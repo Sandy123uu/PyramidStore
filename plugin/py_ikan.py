@@ -171,6 +171,7 @@ class Spider(Spider):
 		url = 'https://ikanys.tv/vodplay/{0}/'.format(id)
 		rsp = self.fetch(url, headers=header)
 		info = json.loads(self.regStr(reg=r'var player_aaaa=(.*?)</script>', src=self.cleanText(rsp.text)))
+		parse = 0
 		if info['url'].startswith('http'):
 			purl = info['url']
 		else:
