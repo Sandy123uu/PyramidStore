@@ -158,7 +158,7 @@ class Spider(Spider):  # 元类 默认的元类 type
 			"vod_director":'',
 			"vod_content":""
 		}
-
+		findurl = False
 		rsp = self.fetch(purl, headers=self.header)
 		if '.m3u8' in rsp.text:
 			findurl = True
