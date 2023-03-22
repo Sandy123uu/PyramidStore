@@ -3,13 +3,17 @@
 import sys
 sys.path.append('..')
 from base.spider import Spider
-import re
-import math
+import json
+import base64
+import random
+import requests
+import urllib.parse
 
-class Spider(Spider):
+class Spider(Spider):  # 元类 默认的元类 type
 	def getName(self):
 		return "体育直播"
 	def init(self,extend=""):
+		print("============{0}============".format(extend))
 		pass
 	def isVideoFormat(self,url):
 		pass
@@ -18,145 +22,170 @@ class Spider(Spider):
 	def homeContent(self,filter):
 		result = {}
 		cateManual = {
-			"全部": ""
+			"体育直播": "全部"
 		}
 		classes = []
 		for k in cateManual:
 			classes.append({
-				'type_name': k,
-				'type_id': cateManual[k]
+				'type_name':k,
+				'type_id':cateManual[k]
 			})
-
 		result['class'] = classes
-		if (filter):
+		if(filter):
 			result['filters'] = self.config['filter']
 		return result
 	def homeVideoContent(self):
-		result = {}
+		result = self.categoryContent('', 1, False, {})
 		return result
-
-	def categoryContent(self,tid,pg,filter,extend):
+	def categoryContent(self,tid,pg, filter,extend):
 		result = {}
-		url = 'http://www.fifa2022.tv/'
-		rsp = self.fetch(url)
-		html = self.html(rsp.text)
-		aList = html.xpath("//tr[@class='against']")
+		if int(pg) > 1:
+			return result
+		rsp = self.fetch('http://itiyu5.tv/spweb/schedule', headers=self.header)
+		root = self.html(self.cleanText(rsp.text))
+		dataList = root.xpath("//div[@class='fixtures']/div[@class='box']")
+		dateList = root.xpath("//div[contains(@class,'subhead')]")
 		videos = []
-		img = 'https://s1.ax1x.com/2022/10/07/x3NPUO.png'
-		for a in aList:
-			urlList = a.xpath("./td[@class='live_link']/a")
-			time = a.xpath("./td[@class='tixing']/@t")[0].split(' ')[1]
-			stat = a.xpath("./td/div[contains(@class, 'status')]/text()")
-			if stat != []:
-				stat = stat[0]
-			else:
-				stat = '未开始'
-			if '比分' not in urlList[0].xpath("./text()")[0] and stat != '结束':
-				remark = a.xpath("./td[@class='matcha']/a/text()")[0] + '|' + time
-				teams = a.xpath("./td[@class='teama']/a/strong/text()")
-				if teams != []:
-					name = teams[0].strip('\t').strip() + 'VS' + teams[1].strip('\t').strip()
+		for data in dataList:
+			pos = dataList.index(data)
+			for video in data.xpath(".//div[@class='list']/ul/li"):
+				infosList = video.xpath(".//div[@class='team']/div")
+				stime = video.xpath(".//p[@class='name']/span/text()")[0].strip()
+				sdate = dateList[pos].xpath('.//text()')[0].split()[0].strip()
+				hour = stime.split(':')[0]
+				if int(hour) < 3:
+					sdate = sdate.replace(sdate[3:-1], str(int(sdate[3:-1]) - 1))
+					stime = str(21 + int(hour)) + ':' + stime.split(':')[1]
 				else:
-					nameList = a.xpath("./td[5]/text()")[0].split(' ')
-					names = []
-					for nL in nameList:
-						if nL != '' and nL.lower() != 'vs':
-							names.append(nL)
-					if len(names) < 3:
-						name = names[0] + 'VS' + name[1]
-					else:
-						name = names[-2] + 'VS' + name[-1]
-				aid = ''
-				for url in urlList:
-					title = url.xpath("./text()")[0]
-					aurl = url.xpath("./@href")[0]
-					#aurl = self.regStr(reg=r'/tv/(.*?).html', src=aurl)
-					if '比分' not in title:
-						aid = aid + title + '@@@' + aurl + '#'
-				videos.append({
-					"vod_id": name + '###' + remark.split('|')[0] + '###' + aid,
-					"vod_name": name,
-					"vod_pic": img,
-					"vod_remarks": remark
-				})
-		numvL = len(videos)
-		pgc = math.ceil(numvL/15)
+					hour = str(int(hour) - 3)
+					if len(hour) == 1:
+						hour = '0' + hour
+					stime = hour + ':' + stime.split(':')[1]
+				rid = video.xpath(".//p[contains(@class,'btn')]/a/@href")[0]
+				state = video.xpath(".//p[contains(@class,'btn')]/a/text()")[0].strip()
+				if len(infosList) != 2:
+					home = infosList[0].xpath('.//span/text()')[0].strip()
+					away = infosList[2].xpath('.//span/text()')[0].strip()
+					cover = infosList[0].xpath('.//img/@src')[0]
+					name = home + 'VS' + away
+				else:
+					cover = 'https://s1.ax1x.com/2022/10/07/x3NPUO.png'
+					name = infosList[1].xpath('.//text()')[0].strip()
+				if state != '已结束':
+					videos.append({
+						"vod_id": rid,
+						"vod_name": name,
+						"vod_pic": cover,
+						"vod_remarks": '[{}]|{}'.format(sdate, stime)
+					})
 		result['list'] = videos
 		result['page'] = pg
-		result['pagecount'] = pgc
-		result['limit'] = numvL
-		result['total'] = numvL
+		result['pagecount'] = 9999
+		result['limit'] = 90
+		result['total'] = 999999
 		return result
 
-	def detailContent(self,array):
-		aid = array[0]
-		aids = aid.split('###')
-		name = aids[0]
-		typeName = aids[1]
-		tus = aids[2].strip('#').split('#')
-		pic = 'https://s1.ax1x.com/2022/10/07/x3NPUO.png'
+	def detailContent(self, array):
+		for i in range(1, 5):
+			rsp = self.fetch('http://itiyu5.tv{}/vid/{}'.format(array[0], i), headers=self.header)
+			if 'vid/{}'.format(i) not in rsp.text:
+				title = '比赛尚未开始'
+				purl = ''
+				break
+			if not '\'url\': ' in rsp.text:
+				title = '比赛尚未开始'
+				purl = ''
+				break
+			else:
+				purl = self.regStr(reg=r"\'url\': \"(.*?)\"", src=rsp.text)
+				title = self.regStr(reg=r"\"title\": \"(.*?)\"", src=rsp.text)
+				if purl == '':
+					rid = self.regStr(reg=r'config\.iurl = \"(.*?)\"', src=rsp.text)
+					if '.m3u' in rid:
+						if rid.count('http') != 1:
+							replstr = self.regStr(reg=r'(http.*?)http', src=rid)
+							purl = rid.replace(replstr, '')
+					else:
+						rid = self.regStr(reg=r'id=(.*)', src=rid)
+						rsp = self.fetch('https://info.zb.video.qq.com/?cmd=4', headers=self.header)
+						country = json.loads(rsp.text)['country']
+						province = json.loads(rsp.text)['province']
+						city = json.loads(rsp.text)['city']
+						ip = json.loads(rsp.text)['ip']
+						rsp = self.fetch('https://geo.yolll.com/geo', headers=self.header)
+						cf_ua = json.loads(rsp.text)['ua']
+						cf_cc = json.loads(rsp.text)['ip']
+						cf_ip = json.loads(rsp.text)['cc']
+						rnd = round(random.random() * 100000)
+						param = {
+							'type': 'stream',
+							'id': rid,
+							'rnd': rnd,
+							'ip': ip,
+							'country': country,
+							'province': province,
+							'city': city,
+							'tx_ip': ip,
+							'tx_country': country,
+							'tx_province': province,
+							'tx_city': city,
+							'cf_ip': cf_ip,
+							'cf_cc': cf_cc,
+							'cf_ua': cf_ua,
+							'ref': 'direct',
+							'ua': 'web',
+						}
+						self.header['Referer'] = 'https://v.stnye.cc/'
+						self.header['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+						rsp = self.post('https://cdn.dianshunxinxi.com/data/live.php', data=param, headers=self.header)
+						jo = json.loads(rsp.text)
+						if jo['status'] != 'success':
+							return ''
+						else:
+							purl = base64.b64decode(urllib.parse.unquote(jo['playurl'])).decode('utf-8')
+							purl = base64.b64decode(purl).decode('utf-8')
+			if '.m3u' in purl:
+				break
 		vod = {
-			"vod_id": name,
-			"vod_name": name,
-			"vod_pic": pic,
-			"type_name": typeName,
-			"vod_year": "",
-			"vod_area": "",
-			"vod_remarks": '',
-			"vod_actor": '',
+			"vod_id":array[0],
+			"vod_name":title,
+			"vod_pic":'https://s1.ax1x.com/2022/10/07/x3NPUO.png',
+			"type_name":'',
+			"vod_year":'',
+			"vod_area":"",
+			"vod_remarks":'',
+			"vod_actor":"",
 			"vod_director":'',
-			"vod_content": ''
+			"vod_content":""
 		}
-		purl = ''
-		for tu in tus:
-			title = tu.split('@@@')[0]
-			uid = tu.split('@@@')[1]
-			purl = purl + '{0}${1}'.format(title,uid) + '#'
+
+		rsp = self.fetch(purl, headers=self.header)
+		if '.m3u8' in rsp.text:
+			findurl = True
+		while findurl:
+			purl = rsp.text.strip('\n').split('\n')[-1]
+			rsp = requests.get(purl, headers=self.header, verify=False)
+			if '.m3u8' not in rsp.text:
+				findurl = False
 		vod['vod_play_from'] = '体育直播'
-		vod['vod_play_url'] = purl
+		vod['vod_play_url'] = '{}${}'.format(title.replace(' ', ''), purl)
 		result = {
-			'list': [
+			'list':[
 				vod
 			]
 		}
 		return result
 
 	def searchContent(self,key,quick):
-		result = {}
+		result = {
+			'list':[]
+		}
 		return result
-
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
-		url = id.strip('#')
-		rsp = self.fetch(url)
-		root = self.html(rsp.text)
-		phpurl = root.xpath("//div[@class='media']/iframe/@src")[0]
-		headers = {
-			"Referer": url,
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
-		}
-		rsp = self.fetch(phpurl,headers=headers,cookies=rsp.cookies)
-		if 'm3u8' in rsp.text:
-			if 'm3u8.html?id=' in rsp.text:
-				purl = re.search(r'm3u8\.html\?id=(.*?m3u8.*?)\"', rsp.text.replace("\n",'').replace("\r",'')).group(1)
-			else:
-				purl = re.search(r"url: \'(.*?)\'", rsp.text.replace("\n",'').replace("\r",'')).group(1)
-			if not purl.startswith('http'):
-				purl = re.search(r"(.*)/", phpurl).group(1) + purl
-		else:
-			aurl = re.search(r"(.*)/", phpurl).group(1) + re.search(r'src=\"..(.*?)\"', rsp.text.replace("\n",'').replace("\r",'')).group(1)
-			aheaders = {
-				"Referer": url,
-				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
-			}
-			r = self.fetch(aurl, headers=aheaders, cookies=rsp.cookies)
-			purl = re.search(r"url: \'(.*?)\'", r.text)
-			if purl == None:
-				purl = re.search(r'm3u8\.html\?id=(.*?)\"', r.text.replace("\n",'').replace("\r",''))
-			purl = purl.group(1)
 		result["parse"] = 0
 		result["playUrl"] = ''
-		result["url"] = purl
+		result["url"] = id
 		result["header"] = ''
 		return result
 
@@ -164,14 +193,9 @@ class Spider(Spider):
 		"player": {},
 		"filter": {}
 	}
-	header = {}
+	header = {
+		"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.54 Safari/537.36"
+	}
 
 	def localProxy(self,param):
-		action = {
-			'url':'',
-			'header':'',
-			'param':'',
-			'type':'string',
-			'after':''
-		}
 		return [200, "video/MP2T", action, ""]
