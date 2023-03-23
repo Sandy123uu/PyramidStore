@@ -159,14 +159,15 @@ class Spider(Spider):  # 元类 默认的元类 type
 			"vod_content":""
 		}
 		findurl = False
-		rsp = self.fetch(purl, headers=self.header)
-		if '.m3u8' in rsp.text:
-			findurl = True
-		while findurl:
-			purl = rsp.text.strip('\n').split('\n')[-1]
-			rsp = requests.get(purl, headers=self.header, verify=False)
-			if '.m3u8' not in rsp.text:
-				findurl = False
+		if purl != '':
+			rsp = self.fetch(purl, headers=self.header)
+			if '.m3u8' in rsp.text and title != '比赛尚未开始':
+				findurl = True
+			while findurl:
+				purl = rsp.text.strip('\n').split('\n')[-1]
+				rsp = requests.get(purl, headers=self.header, verify=False)
+				if '.m3u8' not in rsp.text:
+					findurl = False
 		vod['vod_play_from'] = '体育直播'
 		vod['vod_play_url'] = '{}${}'.format(title.replace(' ', ''), purl)
 		result = {
