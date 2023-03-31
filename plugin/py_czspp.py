@@ -1,13 +1,16 @@
 # coding=utf-8
 # !/usr/bin/python
+import re
 import sys
-sys.path.append('..')
-from base.spider import Spider
 import base64
 import hashlib
+import urllib
 import requests
 from Crypto.Cipher import AES
-import urllib
+
+sys.path.append('..')
+from base.spider import Spider
+
 
 class Spider(Spider):  # 元类 默认的元类 type
     def getName(self):
@@ -39,21 +42,24 @@ class Spider(Spider):  # 元类 默认的元类 type
         return result
 
     def homeVideoContent(self):
+        result = {}
         url = "https://czzy01.com"
         header = {
-            "Connection": "keep-alive",
             "Referer": url,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
         }
-        session = self.getCookie(url,header)
-        rsp = session.get(url, headers=header)
+        rsp = requests.get(url, headers=header)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[@class='mi_btcon']//ul/li")
         videos = []
         for a in aList:
             name = a.xpath('./a/img/@alt')[0]
             pic = a.xpath('./a/img/@data-original')[0]
-            mark = a.xpath("./div[@class='hdinfo']/span/text()")[0]
+            mark = a.xpath("./div[@class='hdinfo']/span/text()")
+            if mark != []:
+                mark = mark[0]
+            else:
+                mark = 'HD'
             sid = a.xpath("./a/@href")[0]
             sid = self.regStr(sid, "/movie/(\\S+).html")
             videos.append({
@@ -62,7 +68,11 @@ class Spider(Spider):  # 元类 默认的元类 type
                 "vod_pic": pic,
                 "vod_remarks": mark
             })
-        result = {}
+        result['list'] = videos
+        result['page'] = 1
+        result['pagecount'] = 9999
+        result['limit'] = 90
+        result['total'] = 999999
         return result
 
     def getCookie(self,url):
@@ -195,8 +205,13 @@ class Spider(Spider):  # 元类 默认的元类 type
         return result
 
     def searchContent(self, key, quick):
-        url = 'https://czzy01.com/xssearch?q={0}'.format(urllib.parse.quote(key))
-        rsp = self.getCookie(url)
+        url = 'https://czzy01.com/?s={0}'.format(urllib.parse.quote(key))
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
+        }
+        rsp = requests.get(url, headers=header)
+        rsp.cookies.update({"esc_search_captcha": "1"})
+        rsp = requests.post(url, headers=header, data='result={}'.format(rsp.cookies['result']), cookies=rsp.cookies)
         root = self.html(self.cleanText(rsp.text))
         vodList = root.xpath("//div[contains(@class,'mi_ne_kd')]/ul/li/a")
         videos = []
