@@ -40,19 +40,22 @@ class Spider(Spider):  # 元类 默认的元类 type
 			result['filters'] = self.config['filter']
 		return result
 	def homeVideoContent(self):
-		result = {
-			'list':[]
-		}
-		return result
+		tid = self.homeContent(False)['class'][0]['type_id']
+		return self.categoryContent(tid, 1, False, {})
+
 	cookies = ''
 	def getCookie(self):
-		cookies_str = self.fetch("http://www.lmhome.tk:8181/TV/cookie.txt").text
-		cookies_dic = dict([co.strip().split('=') for co in cookies_str.split(';')])
-		rsp = session()
-		cookies_jar = utils.cookiejar_from_dict(cookies_dic)
-		rsp.cookies = cookies_jar
-		content = self.fetch("http://api.bilibili.com/x/web-interface/nav", cookies=rsp.cookies)
-		res = json.loads(content.text)
+		try:
+			cookies_str = self.fetch("cook所在链接").text
+			cookies_dic = dict([co.strip().split('=') for co in cookies_str.split(';')])
+			rsp = session()
+			cookies_jar = utils.cookiejar_from_dict(cookies_dic)
+			rsp.cookies = cookies_jar
+			content = self.fetch("http://api.bilibili.com/x/web-interface/nav", cookies=rsp.cookies)
+			res = json.loads(content.text)
+		except:
+			res = {}
+			res["code"] = 404
 		if res["code"] == 0:
 			self.cookies = rsp.cookies
 		else:
@@ -87,8 +90,10 @@ class Spider(Spider):  # 元类 默认的元类 type
 		result['limit'] = 90
 		result['total'] = 999999
 		return result
+
 	def cleanSpace(self,str):
 		return str.replace('\n','').replace('\t','').replace('\r','').replace(' ','')
+
 	def detailContent(self,array):
 		aid = array[0]
 		url = "http://api.bilibili.com/pgc/view/web/season?season_id={0}".format(aid)

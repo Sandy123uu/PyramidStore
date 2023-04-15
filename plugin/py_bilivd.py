@@ -49,29 +49,21 @@ class Spider(Spider):  # 元类 默认的元类 type
         result = {}
         if len(self.cookies) <= 0:
             self.getCookie()
-        if self.login is True:
-            cateManual = {
-                "频道": "频道",
-                "动态": "动态",
-                "热门": "热门",
-                "推荐": "推荐",
-                "排行榜": "排行榜",
-                "收藏夹": "收藏夹",
-                "历史记录": "历史记录",
-                "健身": "刘畊宏 9月21日",
-                "演唱会": "演唱会",
-                "动物世界": "动物世界",
-                "相声小品": "相声小品",
-                "假窗-白噪音": "窗+白噪音"
-            }
-        else:
-            cateManual = {
-                "纪录片": "纪录片",
-                "演唱会": "演唱会",
-                "动物世界": "动物世界",
-                "相声小品": "相声小品",
-                "假窗-白噪音": "窗+白噪音"
-            }
+        cateManual = {
+            "频道": "频道",
+            "热门": "热门",
+            "推荐": "推荐",
+            "排行榜": "排行榜",
+            "健身": "刘畊宏 9月21日",
+            "演唱会": "演唱会",
+            "动物世界": "动物世界",
+            "相声小品": "相声小品",
+            "假窗-白噪音": "窗+白噪音"
+        }
+        if self.login:
+            cateManual.update({"动态": "动态"})
+            cateManual.update({"收藏夹": "收藏夹"})
+            cateManual.update({"历史记录": "历史记录"})
         classes = []
         for k in cateManual:
             classes.append({
@@ -84,10 +76,8 @@ class Spider(Spider):  # 元类 默认的元类 type
         return result
 
     def homeVideoContent(self):
-        result = {
-            'list': []
-        }
-        return result
+        tid = self.homeContent(False)['class'][0]['type_id']
+        return self.categoryContent(tid, 1, False, {})
 
     def get_rcmd(self,pg):
         result = {}
@@ -345,13 +335,17 @@ class Spider(Spider):  # 元类 默认的元类 type
     cookies = ''
     login = False
     def getCookie(self):
-        cookies_str = self.fetch("http://www.lmhome.tk:8181/TV/cookie.txt").text
-        cookies_dic = dict([co.strip().split('=') for co in cookies_str.split(';')])
-        rsp = session()
-        cookies_jar = utils.cookiejar_from_dict(cookies_dic)
-        rsp.cookies = cookies_jar
-        content = self.fetch("http://api.bilibili.com/x/web-interface/nav", cookies=rsp.cookies)
-        res = json.loads(content.text)
+        try:
+            cookies_str = self.fetch("cook所在链接").text
+            cookies_dic = dict([co.strip().split('=') for co in cookies_str.split(';')])
+            rsp = session()
+            cookies_jar = utils.cookiejar_from_dict(cookies_dic)
+            rsp.cookies = cookies_jar
+            content = self.fetch("http://api.bilibili.com/x/web-interface/nav", cookies=rsp.cookies)
+            res = json.loads(content.text)
+        except:
+            res = {}
+            res["code"] = 404
         if res["code"] == 0:
             self.login = True
             self.cookies = rsp.cookies
@@ -523,7 +517,7 @@ class Spider(Spider):  # 元类 默认的元类 type
             "Referer": "https://www.bilibili.com",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
         }
-        result["contentType"] = 'video/x-flv'
+        result["contentType"] = 'video/mp4'
         return result
 
     config = {
