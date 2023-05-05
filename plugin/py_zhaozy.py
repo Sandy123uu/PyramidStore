@@ -4,6 +4,9 @@ import sys
 import time
 import json
 import requests
+from base64 import b64encode
+from collections import OrderedDict
+
 sys.path.append('..')
 from base.spider import Spider
 
@@ -139,29 +142,34 @@ class Spider(Spider):
 		}
 		ja = []
 		cookies_str = requests.get('https://getplayurl.lm317379829.repl.co/cache?key=cookies')
-		cookies_dict = cookies_str.json()
-		if cookies_dict['expires'] <= int(time.time()):
+		if cookies_str.text == '':
 			cookies = self.getCookie()
 		else:
-			cookies = requests.cookies.RequestsCookieJar()
-			for ckey, value in cookies_dict.items():
-				if ckey == 'domain' or ckey == 'expires':
-					continue
-				c = requests.cookies.create_cookie(ckey, value)
-				c.domain = cookies_dict['domain']
-				c.expires = cookies_dict['expires']
-				cookies.set_cookie(c)
+			cookies_dict = cookies_str.json()
+			if cookies_dict['expires'] <= int(time.time()):
+				cookies = self.getCookie()
+			else:
+				cookies = requests.cookies.RequestsCookieJar()
+				for ckey, value in cookies_dict.items():
+					if ckey == 'domain' or ckey == 'expires':
+						continue
+					c = requests.cookies.create_cookie(ckey, value)
+					c.domain = cookies_dict['domain']
+					c.expires = cookies_dict['expires']
+					cookies.set_cookie(c)
 		for tKey in map.keys():
 			url = "https://zhaoziyuan.la/sos?filename={0}&t={1}".format(key,tKey)
 			rsp = self.fetch(url, headers=self.header, cookies=cookies)
 			root = self.html(self.cleanText(rsp.text))
 			aList = root.xpath("//li[@class='clear']/div/div[@class='news_text']/a")
 			for a in aList:
-				title = self.xpText(a,'./h3/text()')
+				name = self.xpText(a,'./h3/text()')
+				if len(name) > 15:
+					name = ''.join(OrderedDict.fromkeys(name))
 				remark = self.xpText(a,'./p/text()').split('|')[1].strip()
 				jo = {
-					'vod_id': title + '@@@' + self.xpText(a,'@href'),
-					'vod_name': title,
+					'vod_id': name + '@@@' + self.xpText(a,'@href'),
+					'vod_name': name,
 					'vod_pic': "https://inews.gtimg.com/newsapp_bt/0/13263837859/1000",
 					"vod_remarks": remark
 				}
