@@ -158,7 +158,7 @@ class Spider(Spider):
 					c.expires = cookies_dict['expires']
 					cookies.set_cookie(c)
 		for tKey in map.keys():
-			url = "https://zhaoziyuan.la/sos?filename={0}&t={1}".format(key,tKey)
+			url = "https://zhaoziyuan.la/so?filename={0}&t={1}".format(key,tKey)
 			rsp = self.fetch(url, headers=self.header, cookies=cookies)
 			root = self.html(self.cleanText(rsp.text))
 			aList = root.xpath("//li[@class='clear']/div/div[@class='news_text']/a")
