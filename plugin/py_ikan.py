@@ -1,12 +1,13 @@
 #coding=utf-8
 #!/usr/bin/python
 import sys
-sys.path.append('..')
-from base.spider import Spider
-import base64
 import math
 import json
+import base64
 import requests
+sys.path.append('..')
+from base.spider import Spider
+
 
 class Spider(Spider):
 	def getName(self):
@@ -170,10 +171,11 @@ class Spider(Spider):
 		result = {}
 		url = 'https://ikanys.tv/vodplay/{0}/'.format(id)
 		rsp = self.fetch(url, headers=header)
-		info = json.loads(self.regStr(reg=r'var player_aaaa=(.*?)</script>', src=self.cleanText(rsp.text)))
+		info = json.loads(self.regStr(reg=r'var player_data=(.*?)</script>', src=self.cleanText(rsp.text)))
 		parse = 0
-		if info['url'].startswith('http'):
-			purl = info['url']
+		purl = base64.b64decode(info['url'].encode())[14:-8].decode()
+		if purl.startswith('http'):
+			purl = purl
 		else:
 			parse = 1
 			purl = url
