@@ -1,7 +1,7 @@
 #coding=utf-8
 #!/usr/bin/python
 import sys
-sys.path.append('..') 
+sys.path.append('..')
 from base.spider import Spider
 import json
 import re
@@ -39,9 +39,11 @@ class Spider(Spider):
 		if (filter):
 			result['filters'] = self.config['filter']
 		return result
+
 	def homeVideoContent(self):
 		result = {}
 		return result
+
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
 		url = 'http://live.yj1211.work/api/live/getRecommendByPlatformArea?platform=huya&size=20&area={0}&page={1}'.format(tid, pg)
@@ -67,6 +69,7 @@ class Spider(Spider):
 		result['limit'] = 90
 		result['total'] = 999999
 		return result
+
 	def detailContent(self,array):
 		aid = array[0]
 		url = 'https://www.huya.com/' + aid
@@ -97,6 +100,7 @@ class Spider(Spider):
 			"vod_content": ""
 		}
 		playUrl = ''
+		playFrom = ''
 		for streamInfo in streamInfoList:
 			hls_url = streamInfo['sHlsUrl'] + '/' + streamInfo['sStreamName'] + '.' + streamInfo['sHlsUrlSuffix']
 			srcAntiCode = html.unescape(streamInfo['sHlsAntiCode'])
@@ -114,11 +118,10 @@ class Spider(Spider):
 			wsTime = hex(int(time.time()) + 3600).replace('0x', '')
 			hash = hashlib.md5('_'.join([hash_prefix, '1463993859134', streamInfo['sStreamName'], hashlib.md5((seqid + '|' + ctype + '|' + t).encode('utf-8')).hexdigest(), wsTime]).encode('utf-8')).hexdigest()
 			ratio = ''
-			purl = "{}?wsSecret={}&wsTime={}&seqid={}&ctype={}&ver=1&txyp={}&fs={}&ratio={}&u={}&t={}&sv=2107230339".format( hls_url, hash, wsTime, seqid, ctype, txyp, fs, ratio, '1463993859134', t)
+			purl = "{}?wsSecret={}&wsTime={}&seqid={}&ctype={}&ver=1&txyp={}&fs={}&ratio={}&u={}&t={}&sv=2107230339".format(hls_url, hash, wsTime, seqid, ctype, txyp, fs, ratio, '1463993859134', t)
 			playUrl = playUrl + '{}${}#'.format(streamInfo['sCdnType'], purl)
 		vod['vod_play_from'] = '虎牙直播'
 		vod['vod_play_url'] = playUrl
-
 		result = {
 			'list': [
 				vod
@@ -128,6 +131,7 @@ class Spider(Spider):
 	def searchContent(self,key,quick):
 		result = {}
 		return result
+	
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
 		url = id
