@@ -1,7 +1,10 @@
 #coding=utf-8
 #!/usr/bin/python
 import sys
-sys.path.append('..') 
+
+import requests
+
+sys.path.append('..')
 from base.spider import Spider
 import json
 
@@ -99,22 +102,16 @@ class Spider(Spider):
 		return result
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
-		url = 'http://live.yj1211.work/api/live/getRealUrl?platform=douyu&roomId={0}'.format(id)
-		rsp = self.fetch(url)
-		jRoot = json.loads(rsp.text)
-		if len(jRoot['data']) == 0:
-			url = ''
+		url = 'https://getplayurl.lmteam.repl.co/live?platform=douyu&rid={0}'.format(id)
+		rsp = requests.get(url, allow_redirects=False)
+		if 'Location' in rsp.headers:
+			url = rsp.headers['Location']
 		else:
-			jo = jRoot['data']
-			ja = jo['OD']
-			url = ja
+			url = ''
 		result["parse"] = 0
 		result["playUrl"] = ''
 		result["url"] = url
-		result["header"] = {
-			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
-		}
-		result["contentType"] = 'video/x-flv'
+		result["header"] = ''
 		return result
 
 	config = {
