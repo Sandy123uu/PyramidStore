@@ -1,4 +1,4 @@
-﻿#coding=utf-8
+#coding=utf-8
 #!/usr/bin/python
 import sys
 sys.path.append('..')
@@ -35,42 +35,9 @@ class Spider(Spider):  # 元类 默认的元类 type
 			result['filters'] = self.config['filter']
 		return result
 
-	def get_homeVideoContent(self, tidDict):
-		videos = []
-		isfolder = True
-		tid = tidDict['type_id']
-		try:
-			res = self.categoryContent(tid, pg=1, filter=False, extend={})
-		except:
-			return {}, False
-		if 'type_flag' in tidDict and len(res) != 0:
-			resList = res['list']
-			result = {}
-			for rL in resList:
-				if rL['vod_tag'] == 'file':
-					videos.append(rL)
-			result['list'] = videos
-			result['page'] = 1
-			result['pagecount'] = 1
-			result['limit'] = 999
-			result['total'] = 999999
-		elif len(res) == 0:
-			isfolder = False
-			result = {}
-		else:
-			isfolder = False
-			result = res
-		if len(videos) == 0:
-			result = res
-		return result, isfolder
-
 	def homeVideoContent(self):
-		tidDict = self.homeContent(False)['class'][0]
-		result, isfolder = self.get_homeVideoContent(tidDict)
-		while isfolder:
-			tidDict = {'type_flag': '1', 'type_id': result['list'][0]['vod_id']}
-			result, isfolder = self.get_homeVideoContent(tidDict)
-		return result
+		result = {}
+		return result 
 
 	def categoryContent(self,tid,pg, filter,extend):
 		result = {}
@@ -81,6 +48,8 @@ class Spider(Spider):  # 元类 默认的元类 type
 		dataList = root.xpath("//div[@class='fixtures']/div[@class='box']")
 		dateList = root.xpath("//div[contains(@class,'subhead')]")
 		videos = []
+		utc_offset = self.fetch('http://worldtimeapi.org/api/timezone/Australia/Sydney', headers=self.header).json()['utc_offset']
+		hour_offset = int(utc_offset.split(':')[0][1:]) - 8
 		for data in dataList:
 			pos = dataList.index(data)
 			for video in data.xpath(".//div[@class='list']/ul/li"):
@@ -88,11 +57,11 @@ class Spider(Spider):  # 元类 默认的元类 type
 				stime = video.xpath(".//p[@class='name']/span/text()")[0].strip()
 				sdate = dateList[pos].xpath('.//text()')[0].split()[0].strip()
 				hour = stime.split(':')[0]
-				if int(hour) < 3:
+				if int(hour) < hour_offset:
 					sdate = sdate.replace(sdate[3:-1], str(int(sdate[3:-1]) - 1))
-					stime = str(21 + int(hour)) + ':' + stime.split(':')[1]
+					stime = str(24 - hour_offset + int(hour)) + ':' + stime.split(':')[1]
 				else:
-					hour = str(int(hour) - 3)
+					hour = str(int(hour) - hour_offset)
 					if len(hour) == 1:
 						hour = '0' + hour
 					stime = hour + ':' + stime.split(':')[1]
@@ -123,14 +92,9 @@ class Spider(Spider):  # 元类 默认的元类 type
 	def detailContent(self, array):
 		for i in range(1, 5):
 			rsp = self.fetch('http://itiyu5.tv{}/vid/{}'.format(array[0], i), headers=self.header)
-			if 'vid/{}'.format(i) not in rsp.text:
+			if 'vid/{}'.format(i) not in rsp.text or not '\'url\': ' in rsp.text:
 				title = '比赛尚未开始'
-				purl = ''
-				return {}
-			if not '\'url\': ' in rsp.text:
-				title = '比赛尚未开始'
-				purl = ''
-				return {}
+				purl = 'http://0.0.0.0'
 			else:
 				purl = self.regStr(reg=r"\'url\': \"(.*?)\"", src=rsp.text)
 				title = self.regStr(reg=r"\"title\": \"(.*?)\"", src=rsp.text)
@@ -179,7 +143,7 @@ class Spider(Spider):  # 元类 默认的元类 type
 						else:
 							purl = base64.b64decode(urllib.parse.unquote(jo['playurl'])).decode('utf-8')
 							purl = base64.b64decode(purl).decode('utf-8')
-			if '.m3u' in purl:
+			if '.m3u' in purl or purl == 'http://0.0.0.0':
 				break
 		vod = {
 			"vod_id":array[0],
@@ -194,7 +158,7 @@ class Spider(Spider):  # 元类 默认的元类 type
 			"vod_content":""
 		}
 		findurl = False
-		if purl != '':
+		if purl != '' and purl != 'http://0.0.0.0':
 			rsp = self.fetch(purl, headers=self.header)
 			if '.m3u8' in rsp.text and title != '比赛尚未开始':
 				findurl = True
