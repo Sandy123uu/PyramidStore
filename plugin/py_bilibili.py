@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20230523_2",
+        'currentVersion': "20230724_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -583,7 +583,8 @@ class Spider(Spider):
                         "vod_pic": self.format_img(user['face']),
                         "vod_remarks": isVIP[user['isVIP']] + typeName + ' ' + isLogin[user['isLogin']]
                     })
-            pic_url = {'qrcode': url}
+            #pic_url = {'qrcode': url}
+            pic_url = {'qrcode': 'https://passport.bilibili.com/h5-app/passport/login/scan?qrcode_key=' + id + '&navhide=1'}
             if not dirname.startswith('/data/'):
                 pic_url['qr_chs'] = '208x117'
             video.append({
@@ -674,7 +675,8 @@ class Spider(Spider):
             elif is_followed:
                 reason = '  已关注'
             else:
-                reason = "  💬" + self.zh(vod['stat']['danmaku'])
+                #reason = "  💬" + self.zh(vod['stat']['danmaku'])
+                reason = '  🆙' + vod['owner']['name'].strip()
             remark = str(self.second_to_time(vod['duration'])).strip() + "  ▶" + self.zh(vod['stat']['view']) + reason
         video = [{
             "vod_id": aid,
@@ -686,12 +688,13 @@ class Spider(Spider):
             video.extend(v)
         return video
 
+    _popSeriesInit = 0
+    
     def get_found(self, tid, rid, pg):
         result = {}
         if tid == '推荐':
-            query = self.encrypt_wbi(fresh_type=4, feed_version='V8', fresh_idx=pg, fresh_idx_1h=pg, brush=pg, homepage_ver=1, ps=self.userConfig['page_size'])
+            query = self.encrypt_wbi(fresh_type=4, feed_version='V3', brush=1, fresh_idx=pg, fresh_idx_1h=pg, ps=self.userConfig['page_size'])
             url = f'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?{query}'
-            rsp = self._get_sth(url)
         else:
             url = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid={0}&type={1}'.format(rid, tid)
             if tid == '热门':
@@ -699,12 +702,16 @@ class Spider(Spider):
             elif tid == "入站必刷":
                 url = 'https://api.bilibili.com/x/web-interface/popular/precious'
             elif tid == "每周必看":
-                url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
-                rsp = self._get_sth(url, 'fake')
-                jo = json.loads(rsp.text)
-                number = jo['data']['list'][0]['number']
+                if not self._popSeriesInit or int(pg) == 1:
+                    url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
+                    rsp = self._get_sth(url, 'fake')
+                    jo = json.loads(rsp.text)
+                    number = self._popSeriesInit = jo['data']['list'][0]['number']
+                    self._popSeriesNum = [int(number), 1]
+                else:
+                    number = self._popSeriesNum[0]
                 url = 'https://api.bilibili.com/x/web-interface/popular/series/one?number=' + str(number)
-            rsp = self._get_sth(url, 'fake')
+        rsp = self._get_sth(url)
         jo = json.loads(rsp.text)
         if jo['code'] == 0:
             videos = []
@@ -712,7 +719,18 @@ class Spider(Spider):
             if not vodList:
                 vodList = jo['data']['list']
             if len(vodList) > self.userConfig['page_size']:
-                vodList = self.pagination(vodList, pg)
+                if tid == "每周必看":
+                    _tmp_pg = int(self._popSeriesNum[1])
+                    value = len(vodList) / self.userConfig['page_size'] - _tmp_pg
+                    if value > 0:
+                        value += 1
+                    if not int(value):
+                        self._popSeriesNum = [int(number) - 1, 1]
+                    else:
+                        self._popSeriesNum[1] = _tmp_pg + 1
+                else:
+                    _tmp_pg = pg
+                vodList = self.pagination(vodList, _tmp_pg)
             for v in self.pool.map(self.get_found_vod, vodList):
                 videos.extend(v)
             result['list'] = videos
@@ -1004,7 +1022,7 @@ class Spider(Spider):
         jo = json.loads(content)
         if jo['code'] == 0:
             videos = []
-            vodList = jo['data']['medias']
+            vodList = jo['data'].get('medias', [])
             for vod in vodList:
                 # 只展示类型为 视频的条目
                 # 过滤去掉收藏中的 已失效视频;如果不喜欢可以去掉这个 if条件
@@ -2189,7 +2207,7 @@ class Spider(Spider):
             typeName = jo.get('parent_area_name') + '--' + jo.get('area_name')
             live_status = jo.get('live_status', '')
             if live_status:
-                live_status = "开播时间：" + jo.get('live_time')
+                live_status = "开播时间：" + jo.get('live_time').replace('-', '.')
             else:
                 live_status = "未开播"
             vod = {
