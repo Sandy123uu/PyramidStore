@@ -1,34 +1,42 @@
 #coding=utf-8
 #!/usr/bin/python
 import sys
-sys.path.append('..') 
-from base.spider import Spider
 import json
+import time
+import hashlib
+import requests
+from urllib.parse import urlparse
+
+sys.path.append('..')
+from base.spider import Spider
 
 class Spider(Spider):
 	def getName(self):
 		return "77"
+
 	def init(self,extend=""):
 		print("============{0}============".format(extend))
 		pass
+
 	def homeContent(self,filter):
 		result = {}
-		url = 'http://api.kunyu77.com/api.php/provide/filter'
+		url = 'http://api.tyun77.cn/api.php/provide/filter'
 		rsp = self.fetch(url,headers=self.header)
 		jo = json.loads(rsp.text)
 		classes = []
 		jData = jo['data']
 		for cKey in jData.keys():
 			classes.append({
-				'type_name':jData[cKey][0]['cat'],
+				'type_name':jData[cKey][0]['cat'].replace('电视剧', '剧集'),
 				'type_id':cKey
 			})
 		result['class'] = classes
 		if(filter):
-			result['filters'] = self.config['filter']	
+			result['filters'] = self.config['filter']
 		return result
+
 	def homeVideoContent(self):
-		url = 'http://api.kunyu77.com/api.php/provide/homeBlock?type_id=0'
+		url = 'http://api.tyun77.cn/api.php/provide/homeBlock?type_id=0'
 		rsp = self.fetch(url,headers=self.header)
 		jo = json.loads(rsp.text)
 		blockList = jo['data']['blocks']
@@ -46,21 +54,37 @@ class Spider(Spider):
 			'list':videos
 		}
 		return result
+
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
+		ts = int(time.time())
 		if 'type_id' not in extend.keys():
 			extend['type_id'] = tid
 		extend['pagenum'] = pg
-		filterParams = ["type_id", "pagenum"]
-		params = ["", ""]
-		for idx in range(len(filterParams)):
-			fp = filterParams[idx]
-			if fp in extend.keys():
-				params[idx] = '&'+filterParams[idx]+'='+extend[fp]
-		suffix = ''.join(params)
-		url = 'http://api.kunyu77.com/api.php/provide/searchFilter?pagesize=24{0}'.format(suffix)
-		rsp = self.fetch(url,headers=self.header)
+		extend = {
+			'pcode': '010110002',
+			'version': '2.1.6',
+			'devid': hashlib.md5(str(time.time()).encode()).hexdigest(),
+			'package': 'com.sevenVideo.app.android',
+			'sys': 'android',
+			'sysver': 13,
+			'brand': 'Redmi',
+			'model': 'M2104K10AC',
+			'pagesize': 24
+		}
+		url = 'https://api.tyun77.cn/api.php/provide/searchFilter'
+		header = self.header.copy()
+		header['t'] = str(ts)
+		header['TK'] = self.get_tk(url, extend, ts)
+		rsp = requests.get(url, params=extend, headers=header, timeout=5)
 		jo = json.loads(rsp.text)
+		if jo['code'] == 1004:
+			rsp = requests.get('http://api.tyun77.cn/api.php/provide/getDomain', params=extend, headers=header, timeout=5)
+			if rsp.json()['code'] != 1:
+				rsp = requests.get(url, params=extend, headers=header, timeout=5)
+				jo = json.loads(rsp.text)
+			else:
+				return {}
 		vodList = jo['data']['result']
 		videos = []
 		for vod in vodList:
@@ -76,11 +100,34 @@ class Spider(Spider):
 		result['limit'] = 90
 		result['total'] = 999999
 		return result
+
 	def detailContent(self,array):
 		tid = array[0]
-		url = 'http://api.kunyu77.com/api.php/provide/videoDetail?devid=453CA5D864457C7DB4D0EAA93DE96E66&package=com.sevenVideo.app.android&version=1.8.7&ids={0}'.format(tid)
-		rsp = self.fetch(url,headers=self.header)
+		ts = int(time.time())
+		params = {
+			'pcode': '010110002',
+			'version': '2.1.6',
+			'devid': hashlib.md5(str(time.time()).encode()).hexdigest(),
+			'package': 'com.sevenVideo.app.android',
+			'sys': 'android',
+			'sysver': 13,
+			'brand': 'Redmi',
+			'model': 'M2104K10AC'
+		}
+		params['ids'] = tid
+		url = 'http://api.tyun77.cn/api.php/provide/videoDetail'
+		header = self.header.copy()
+		header['t'] = str(ts)
+		header['TK'] = self.get_tk(url, params, ts)
+		rsp = requests.get(url, headers=header, params=params, timeout=5)
 		jo = json.loads(rsp.text)
+		if jo['code'] != 1:
+			rsp = requests.get('http://api.tyun77.cn/api.php/provide/getDomain', params=params, headers=header, timeout=5)
+			if rsp.json()['code'] == 1:
+				rsp = requests.get(url, params=params, headers=header, timeout=5)
+				jo = json.loads(rsp.text)
+			else:
+				return {}
 		node = jo['data']
 		vod = {
 			"vod_id":node['id'],
@@ -94,8 +141,9 @@ class Spider(Spider):
 			"vod_director":node['director'],
 			"vod_content":node['brief'].strip()
 		}
-		listUrl = 'http://api.kunyu77.com/api.php/provide/videoPlaylist?devid=453CA5D864457C7DB4D0EAA93DE96E66&package=com.sevenVideo.app.android&version=1.8.7&ids={0}'.format(tid)
-		listRsp = self.fetch(listUrl,headers=self.header)
+		listUrl = 'http://api.tyun77.cn/api.php/provide/videoPlaylist'
+		header['TK'] = self.get_tk(listUrl, params, ts)
+		listRsp = requests.get(listUrl, headers=header, params=params, timeout=5)
 		listJo = json.loads(listRsp.text)
 		playMap = {}
 		episodes = listJo['data']['episodes']
@@ -127,8 +175,8 @@ class Spider(Spider):
 		}
 		return result
 
-	def searchContent(self,key,quick):		
-		url = 'http://api.kunyu77.com/api.php/provide/searchVideo?searchName={0}'.format(key)
+	def searchContent(self,key,quick):
+		url = 'http://api.tyun77.cn/api.php/provide/searchVideo?searchName={0}'.format(key)
 		rsp = self.fetch(url,headers=self.header)
 		jo = json.loads(rsp.text)
 		vodList = jo['data']
@@ -150,12 +198,10 @@ class Spider(Spider):
 		"filter": {}
 	}
 	header = {
-		"User-Agent":"Dalvik/2.1.0"
+		'User-Agent': 'okhttp/3.12.0'
 	}
 	def playerContent(self,flag,id,vipFlags):
 		result = {}
-		url = 'http://api.kunyu77.com/api.php/provide/parserUrl?url={0}'.format(id)
-		jo = self.fetch(url,headers=self.header).json()
 		result = {
 			'parse':0,
 			'jx':0,
@@ -163,13 +209,28 @@ class Spider(Spider):
 			'url':id,
 			'header':''
 		}
-		if flag in vipFlags:
+		if flag != 'ppayun':
 			result['parse'] = 1
 			result['jx'] = 1
 		return result
+
 	def isVideoFormat(self,url):
 		pass
+
 	def manualVideoCheck(self):
 		pass
+
+	def get_tk(self, url, params, ts):
+		keys = []
+		for key in params:
+			keys.append(key)
+		keys.sort()
+		src = urlparse(url).path
+		for key in keys:
+			src += str(params[key])
+		src += str(ts)
+		src += 'XSpeUFjJ'
+		return hashlib.md5(src.encode()).hexdigest()
+
 	def localProxy(self,param):
 		return [200, "video/MP2T", action, ""]

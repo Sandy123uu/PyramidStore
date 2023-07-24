@@ -43,12 +43,8 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def homeVideoContent(self):
         result = {}
-        url = "https://czzy01.com"
-        header = {
-            "Referer": url,
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-        }
-        rsp = requests.get(url, headers=header)
+        url = "https://czzy.fun/"
+        rsp = requests.get(url, headers=self.header, timeout=5)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[@class='mi_btcon']//ul/li")
         videos = []
@@ -75,38 +71,16 @@ class Spider(Spider):  # 元类 默认的元类 type
         result['total'] = 999999
         return result
 
-    def getCookie(self,url):
-        header = {
-            "Referer": 'https://czzy01.com/',
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-        }
-        session = requests.session()
-        rsp = session.get(url)
-        if '人机验证' in rsp.text:
-            append = self.regStr(rsp.text, 'src=\"(/.*?)\"')
-            nurl = 'https://czzy01.com' + append
-            nrsp = session.get(nurl, headers=header)
-            key = self.regStr(nrsp.text, 'var key=\"(.*?)\"')
-            avalue = self.regStr(nrsp.text, 'value=\"(.*?)\"')
-            c = ''
-            for i in range(0, len(avalue)):
-                a = avalue[i]
-                b = ord(a)
-                c = c + str(b)
-            value = hashlib.md5(c.encode()).hexdigest()
-            session.get('https://czzy01.com/a20be899_96a6_40b2_88ba_32f1f75f1552_yanzheng_ip.php?type=96c4e20a0e951f471d32dae103e83881&key={0}&value={1}'.format(key, value), headers=header)
-            return session.get(url, headers=header)
-        elif '检测中' in rsp.text:
-            append = self.regStr(rsp.text, 'href =\"(/.*?)\"')
-            session.get('https://czzy01.com{0}'.format(append), headers=header)
-            return session.get(url, headers=header)
-        else:
-            return rsp
-
     def categoryContent(self, tid, pg, filter, extend):
         result = {}
-        url = 'https://czzy01.com/{0}/page/{1}'.format(tid,pg)
-        rsp = self.getCookie(url)
+        header = {
+            'Origin': 'https://czzy.fun/',
+            'Referer': 'https://czzy.fun/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+            'Cookie': 'esc_search_captcha=1'
+        }
+        url = 'https://czzy.fun/{0}/page/{1}'.format(tid,pg)
+        rsp = self.fetch(url, headers=self.header)
         root = self.html(self.cleanText(rsp.text))
         aList = root.xpath("//div[contains(@class,'bt_img mi_ne_kd mrb')]/ul/li")
         videos = []
@@ -134,8 +108,8 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def detailContent(self, array):
         tid = array[0]
-        url = 'https://czzy01.com/movie/{0}.html'.format(tid)
-        rsp = self.getCookie(url)
+        url = 'https://czzy.fun/movie/{0}.html'.format(tid)
+        rsp = self.fetch(url, headers=self.header)
         root = self.html(self.cleanText(rsp.text))
         node = root.xpath("//div[@class='dyxingq']")[0]
         pic = node.xpath(".//div[@class='dyimg fl']/img/@src")[0]
@@ -205,13 +179,8 @@ class Spider(Spider):  # 元类 默认的元类 type
         return result
 
     def searchContent(self, key, quick):
-        url = 'https://czzy01.com/?s={0}'.format(urllib.parse.quote(key))
-        header = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-        }
-        rsp = requests.get(url, headers=header)
-        rsp.cookies.update({"esc_search_captcha": "1"})
-        rsp = requests.post(url, headers=header, data='result={}'.format(rsp.cookies['result']), cookies=rsp.cookies)
+        url = 'https://czzy.fun/?s={0}'.format(urllib.parse.quote(key))
+        rsp = requests.get(url, headers=self.header)
         root = self.html(self.cleanText(rsp.text))
         vodList = root.xpath("//div[contains(@class,'mi_ne_kd')]/ul/li/a")
         videos = []
@@ -240,9 +209,12 @@ class Spider(Spider):  # 元类 默认的元类 type
         "filter": {}
     }
     header = {
-        "Referer": "https://czzy01.com/",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36"
+        'Origin': 'https://czzy.fun/',
+        'Referer': 'https://czzy.fun/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+        'Cookie': 'esc_search_captcha=1'
     }
+
     def parseCBC(self, enc, key, iv):
         keyBytes = key.encode("utf-8")
         ivBytes = iv.encode("utf-8")
@@ -253,8 +225,8 @@ class Spider(Spider):  # 元类 默认的元类 type
 
     def playerContent(self, flag, id, vipFlags):
         result = {}
-        url = 'https://czzy01.com/v_play/{0}.html'.format(id)
-        rsp = self.getCookie(url)
+        url = 'https://czzy.fun/v_play/{0}.html'.format(id)
+        rsp = self.fetch(url, headers=self.header)
         pat = '\\"([^\\"]+)\\";var [\\d\\w]+=function dncry.*md5.enc.Utf8.parse\\(\\"([\\d\\w]+)\\".*md5.enc.Utf8.parse\\(([\\d]+)\\)'
         html = rsp.text
         content = self.regStr(html, pat)

@@ -18,6 +18,7 @@ class Spider(Spider):
 		pass
 	def manualVideoCheck(self):
 		pass
+
 	def homeContent(self,filter):
 		result = {}
 		cateManual = {
@@ -39,38 +40,13 @@ class Spider(Spider):
 		if (filter):
 			result['filters'] = self.config['filter']
 		return result
+
 	def homeVideoContent(self):
 		result = {}
 		return result
 
 	def categoryContent(self,tid,pg,filter,extend):
 		result = {}
-		header = {
-			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"}
-		url = 'https://ikanys.tv/vodshow/{}--------{}---/'.format(tid,pg)
-		session= self.verifyCode('show')
-		rsp = session.get(url, headers=header)
-		html = self.html(rsp.text)
-		aList = html.xpath("//div[@class='module']/a")
-		videos = []
-		numvL = len(aList)
-		pgc = math.ceil(numvL/15)
-		for a in aList:
-			aid = a.xpath("./@href")[0]
-			aid = self.regStr(reg=r'/voddetail/(.*?)/', src=aid)
-			img = a.xpath(".//div[@class='module-item-pic']/img/@data-original")[0]
-			name = a.xpath("./@title")[0]
-			videos.append({
-				"vod_id": aid,
-				"vod_name": name,
-				"vod_pic": img,
-				"vod_remarks": ''
-			})
-		result['list'] = videos
-		result['page'] = pg
-		result['pagecount'] = pgc
-		result['limit'] = numvL
-		result['total'] = numvL
 		return result
 
 	def detailContent(self,array):
@@ -78,9 +54,9 @@ class Spider(Spider):
 		url = 'https://ikanys.tv/voddetail/{0}/'.format(aid)
 		rsp = self.fetch(url)
 		html = self.html(rsp.text)
-		node = html.xpath("//div[@class='module-main']")[0]
-		title = node.xpath(".//div[@class='module-info-heading']/h1/text()")[0]
-		pic = html.xpath("//div[@class='module-item-pic']/img/@data-original")[0]
+		node = html.xpath("//div[@class='box-width flex between rel']")[0]
+		title = html.xpath("//h3[@class='slide-info-title hide']/text()")[0]
+		pic = html.xpath("//a[@class='detail-pic lazy mask-1']/@data-original")[0]
 		vod = {
 			"vod_id": aid,
 			"vod_name": title,
@@ -94,16 +70,16 @@ class Spider(Spider):
 			"vod_content": ''
 		}
 		playFrom = ''
-		playfromList = html.xpath("//div[@class='module-tab-items-box hisSwiper']/div")
+		playfromList = html.xpath("//div[@class='swiper-wrapper']/a")
 		for pL in playfromList:
-			pL = pL.xpath("./@data-dropdown-value")[0].strip()
+			pL = pL.xpath("./text()")[0].strip()
 			playFrom = playFrom + '$$$' + pL
-		urlList = html.xpath("//div[contains(@class,'module-list sort-list tab-list his-tab-list')]")
+		urlList = html.xpath("//div[contains(@class,'anthology-list-box none')]")
 		playUrl = ''
 		for uL in urlList:
-			for playurl in uL.xpath(".//a"):
-				purl = self.regStr(reg=r'/vodplay/(.*?)/', src=playurl.xpath("./@href")[0])
-				name = playurl.xpath("./@title")[0]
+			for playurl in uL.xpath(".//li"):
+				purl = self.regStr(reg=r'/vodplay/(.*?)/', src=playurl.xpath("./a/@href")[0])
+				name = playurl.xpath("./a/text()")[0]
 				playUrl = playUrl + '{}${}#'.format(name, purl)
 			playUrl = playUrl + '$$$'
 		vod['vod_play_from'] = playFrom.strip('$$$')
@@ -117,23 +93,24 @@ class Spider(Spider):
 		return result
 
 	def verifyCode(self,tag):
-		retry = 10
 		header = {
 			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
 		}
-		while retry:
-			try:
-				session = requests.session()
-				img = session.get('https://ikanys.tv/index.php/verify/index.html?', headers=header).content
-				code = session.post('https://api.nn.ci/ocr/b64/text', data=base64.b64encode(img).decode()).text
-				'https://ikanys.tv/index.php/ajax/verify_check?type=show&verify=0072'
-				res = session.post(url=f"https://ikanys.tv/index.php/ajax/verify_check?type={tag}&verify={code}", headers=header).json()
-				if res["msg"] == "ok":
-					return session
-			except Exception as e:
-				print(e)
-			finally:
-				retry = retry - 1
+		try:
+			session = requests.session()
+			r = session.post('https://ddddocr.lm317379829.repl.co', json={'url': 'https://ikanys.tv/index.php/verify/index.html', 'comp': 'digit'})
+			jo = r.json()
+			if jo['code'] == 1:
+				code = jo['result']
+				session.cookies.update(jo['cookies'])
+			else:
+				return False, None
+			res = session.post(url="https://ikanys.tv/index.php/ajax/verify_check?type={}&verify={}".format(tag, code), headers=header, timeout=5).json()
+			if res["msg"] == "ok":
+				return True, session
+		except:
+			pass
+		return False, None
 
 	def searchContent(self,key,quick):
 		result = {}
@@ -141,15 +118,16 @@ class Spider(Spider):
 			"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
 		}
 		url = 'https://ikanys.tv/vodsearch/-------------/?wd={0}'.format(key)
-		session = self.verifyCode('search')
+		_, session = self.verifyCode('search')
 		rsp = session.get(url, headers=header)
 		root = self.html(rsp.text)
-		vodList = root.xpath("//div[@class='module-items module-card-items']/div")
+		vodList = root.xpath("//div[@class='search-box flex rel']")
 		videos = []
 		for vod in vodList:
-			name = vod.xpath("./a/div/div/img/@alt")[0]
-			pic = vod.xpath("./a/div/div/img/@data-original")[0]
-			sid = vod.xpath("./a/@href")[0]
+			name = vod.xpath(".//div[@class='thumb-txt cor4 hide']/text()")[0]
+			pic = vod.xpath(".//div[@class='lazy gen-movie-img mask-1']/@data-original")[0]
+			mark = vod.xpath(".//span[@class='public-list-prb hide ft2']/text()")[0]
+			sid = vod.xpath(".//a[@class='public-list-exp']/@href")[0]
 			sid = self.regStr(sid,"/voddetail/(\\S+)/")
 			videos.append({
 				"vod_id":sid,
@@ -160,7 +138,6 @@ class Spider(Spider):
 		result = {
 				'list': videos
 			}
-
 		return result
 
 	def playerContent(self,flag,id,vipFlags):
