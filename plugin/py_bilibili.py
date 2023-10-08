@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20230724_1",
+        'currentVersion': "20231003_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -33,7 +33,7 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '126',
+        'vodDefaultQn': '80',
         #视频默认解码ID
         'vodDefaultCodec': '7',
         #音频默认码率ID
@@ -98,13 +98,12 @@ class Spider(Spider):
     focus_on_up_list = [
         #{"n":"徐云流浪中国", "v":"697166795"},
     ]
-    
+
     #在搜索标签的筛选中固定显示搜索词
     focus_on_search_key = [
-        '哈利波特',
-        '演唱会',
+        '假窗',
         'MV',
-        '假窗'
+        '演唱会'
     ]
 
     def getName(self):
@@ -136,7 +135,7 @@ class Spider(Spider):
         self.userConfig = {**self.defaultConfig, **self.userConfig}
 
     dump_config_lock = threading.Lock()
-    
+
     def dump_config(self):
         needSaveConfig = ['users', 'channel_list', 'cateLive', 'cateManualLive', 'cateManualLiveExtra']
         userConfig_new = {}
@@ -160,7 +159,7 @@ class Spider(Spider):
         self.pool.submit(self.add_focus_on_up_filter)
         self.pool.submit(self.get_tuijian_filter)
         self.pool.submit(self.add_fav_filter)
-        self.pool.submit(self.homeVideoContent)
+        #self.pool.submit(self.homeVideoContent)
         needLogin = ['动态', '收藏', '关注', '历史']
         cateManual = self.userConfig['cateManual']
         if not self.userid and not 'UP' in cateManual or not '动态' in cateManual and not 'UP' in cateManual:
@@ -269,7 +268,7 @@ class Spider(Spider):
             self.getCookie_event.wait()
             if not self.session_master.cookies:
                 self.session_master.cookies = rsp.cookies
-        
+
     def get_fav_list_dict(self, fav):
         fav_dict = {
             'n': fav['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').strip(),
@@ -585,8 +584,9 @@ class Spider(Spider):
                     })
             #pic_url = {'qrcode': url}
             pic_url = {'qrcode': 'https://passport.bilibili.com/h5-app/passport/login/scan?qrcode_key=' + id + '&navhide=1'}
-            if not dirname.startswith('/data/'):
-                pic_url['qr_chs'] = '208x117'
+            #if not dirname.startswith('/data/'):
+            #    pic_url['qr_chs'] = '208x117'
+            pic_url['qr_chs'] = '208x117'
             video.append({
                 "vod_id": 'setting_login_' + id,
                 "vod_name": '有效期3分钟，确认后点这里',
@@ -689,7 +689,7 @@ class Spider(Spider):
         return video
 
     _popSeriesInit = 0
-    
+
     def get_found(self, tid, rid, pg):
         result = {}
         if tid == '推荐':
@@ -805,7 +805,7 @@ class Spider(Spider):
             for vod in vodList:
                 aid = str(vod['season_id']).strip()
                 title = vod['title'].strip()
-                img = vod['cover'].strip()
+                img = vod['ep_cover'].strip()
                 remark = '🆕' + vod['pub_index'] + '  ❤ ' + vod['follows'].replace('系列', '').replace('追番', '')
                 videos1.append({
                     "vod_id": 'ss' + aid,
@@ -821,7 +821,7 @@ class Spider(Spider):
                     if str(vod['published']) == "0":
                         aid = str(vod['season_id']).strip()
                         title = str(vod['title']).strip()
-                        img = str(vod['cover']).strip()
+                        img = str(vod['ep_cover']).strip()
                         date = str(time.strftime("%m-%d %H:%M", time.localtime(vod['pub_ts'])))
                         remark = date + "   " + vod['pub_index']
                         videos2.append({
@@ -876,7 +876,7 @@ class Spider(Spider):
         return result
 
     get_up_videos_result = {}
-    
+
     def get_up_videos(self, mid, pg, order):
         result = {}
         if not mid.isdigit():
@@ -949,7 +949,7 @@ class Spider(Spider):
         return result
 
     history_view_at = 0
-    
+
     def get_history(self, type, pg):
         result = {}
         if int(pg) == 1:
@@ -1048,7 +1048,7 @@ class Spider(Spider):
 
     get_up_info_event = threading.Event()
     up_info = {}
-    
+
     def get_up_info(self, mid, **kwargs):
         if mid in self.up_info:
             self.get_up_info_event.set()
@@ -1079,7 +1079,7 @@ class Spider(Spider):
             info['vod_pc'] += 1
         self.up_info[mid] = info
         self.get_up_info_event.set()
-    
+
     def get_vod_relation(self, id):
         if id.isdigit():
             urlarg = 'aid=' + str(id)
@@ -1563,7 +1563,7 @@ class Spider(Spider):
         self.get_vod_hot_reply_event.set()
 
     detailContent_args = {}
-    
+
     def detailContent(self, array):
         self.stop_heartbeat_event.set()
         aid = array[0]
@@ -1876,7 +1876,7 @@ class Spider(Spider):
                 '2': '追剧',
             }
         },{
-            
+
             'f': '上传播放进度',
             'c': 'heartbeatInterval',
             'd': {
@@ -1884,7 +1884,7 @@ class Spider(Spider):
                 '15': '开',
             }
         },{
-            
+
             'f': '直播筛选细化',
             'c': 'showLiveFilterTag',
             'd': {
@@ -2248,7 +2248,7 @@ class Spider(Spider):
         return result
 
     search_key = ''
-    
+
     def searchContent(self, key, quick):
         if not self.session_fake.cookies:
             self.pool.submit(self.getFakeCookie, True)
@@ -2350,7 +2350,7 @@ class Spider(Spider):
             "key": le[:32],
             "wts": wts
         }
-    
+
     def encrypt_wbi(self, **params):
         wts = round(time.time())
         if not self.wbi_key or abs(self.wbi_key['wts']) < 30:
@@ -2655,7 +2655,7 @@ class Spider(Spider):
         self.get_dash_event.set()
         time.sleep(3)
         os.remove(f"{dirname}/playurl.mpd")
-        
+
     def get_durl(self, ja):
         maxSize = -1
         position = -1
@@ -2670,7 +2670,7 @@ class Spider(Spider):
                 position = 0
             url = ja[position]['url']
         return url
-        
+
     def playerContent(self, flag, id, vipFlags):
         self.stop_heartbeat_event.set()
         result = {'playUrl': '', 'url': ''}
@@ -2720,6 +2720,7 @@ class Spider(Spider):
                 result["parse"] = '1'
                 result['jx'] = '1'
                 result["header"] = str({"User-Agent": self.header["User-Agent"]})
+                result["danmaku"] = 'https://api.bilibili.com/x/v1/dm/list.so?oid=' + str(cid)
                 return result
             url = 'https://api.bilibili.com/pgc/player/web/playurl?aid={}&cid={}&fnval=4048&fnver=0&fourk=1'.format(aid, cid)
         rsp = self._get_sth(url, 'vip')
@@ -2744,6 +2745,7 @@ class Spider(Spider):
         result["parse"] = '0'
         result["contentType"] = ''
         result["header"] = self.header
+        result["danmaku"] = 'https://api.bilibili.com/x/v1/dm/list.so?oid=' + str(cid)
         #回传播放记录
         self.pool.submit(self.start_heartbeat, aid, cid, ids)
         return result
@@ -2840,7 +2842,7 @@ class Spider(Spider):
                       "value": [{"n": "视频", "v": "video"}, {"n": "番剧", "v": "media_bangumi"}, {"n": "影视", "v": "media_ft"},
                                 {"n": "直播", "v": "live"}, {"n": "用户", "v": "bili_user"}]},
                     {"key": "order", "name": "视频排序",
-                      "value": [{"n": "综合排序", "v": "totalrank"}, {"n": "最新发布", "v": "pubdate"}, {"n": "最多点击", "v": "click"},
+                      "value": [{"n": "综合排序", "v": "totalrank"}, {"n": "最多点击", "v": "click"}, {"n": "最新发布", "v": "pubdate"},
                                 {"n": "最多收藏", "v": "stow"}, {"n": "最多弹幕", "v": "dm"}]},
                     {"key": "duration", "name": "视频时长",
                       "value": [{"n": "全部", "v": "0"}, {"n": "60分钟以上", "v": "4"}, {"n": "30~60分钟", "v": "3"},
