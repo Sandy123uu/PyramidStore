@@ -1722,7 +1722,7 @@ class Spider(Spider):
             vod['vod_remarks'] = "　".join(remark)
             vod_tags = ', '.join(map(lambda x: "[a=cr:{'id': '" + x['tag_name'] + "_clicklink','name':'" + x['tag_name'] + "'}/]" + x['tag_name'] + "[/a]", jRoot['data'].get('Tags', [])))
             vod['vod_content'] = vod_tags + ' \n' + desc
-            self.userConfig['show_vod_hot_reply'] = False
+            self.userConfig['show_vod_hot_reply'] = True
         else:
             vod['vod_actor'] = "　".join(remark)
             vod['vod_area'] = "bilidanmu"
@@ -2178,7 +2178,7 @@ class Spider(Spider):
                 seasons = 0
             if 'rating' in jo:
                 remark = str(jo['rating']['score']) + '分  ' + remark
-            self.userConfig['show_vod_hot_reply'] = False
+            self.userConfig['show_vod_hot_reply'] = True
         else:
             vod["vod_area"] = "bilidanmu"
         vod["vod_remarks"] = remark
