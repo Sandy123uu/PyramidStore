@@ -1655,15 +1655,15 @@ class Spider(Spider):
         if secondP:
             AllPt.append('做点什么')
             AllPu.extend(secondP)
-        if jo_Related:
-            AllPt.append('相关推荐')
-            AllPu.append('#'.join(self.pool.map(self.get_normal_episodes, jo_Related)))
         if self.userConfig['show_vod_hot_reply']:
             self.get_vod_hot_reply_event.wait()
             replyList = self.detailContent_args.get('Reply', '')
             if replyList:
                 AllPt.append('热门评论')
                 AllPu.extend([replyList])
+        if jo_Related:
+            AllPt.append('相关推荐')
+            AllPu.append('#'.join(self.pool.map(self.get_normal_episodes, jo_Related)))
         if ugc_season:
             for t in as_completed(ugc_season_task):
                 AllPt.append(t.result()[0])
