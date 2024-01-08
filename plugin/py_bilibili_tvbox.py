@@ -34,7 +34,7 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '80',
+        'vodDefaultQn': '116',
         #视频默认解码ID
         'vodDefaultCodec': '7',
         #音频默认码率ID
@@ -97,7 +97,7 @@ class Spider(Spider):
 
     #在动态标签的筛选中固定显示他，n为用户名或任意都可以，v必须为准确的UID
     focus_on_up_list = [
-        #{"n":"徐云流浪中国", "v":"697166795"},
+        #{"n":"电影最TOP", "v":"17819768"},
     ]
 
     #在搜索标签的筛选中固定显示搜索词
@@ -1655,12 +1655,12 @@ class Spider(Spider):
             secondPList = [follow, triple, like, coin1, coin2, unfollow, unlike]
             if mlid:
                 favdel = f"☆取消收藏${mlid}_del_notplay_fav"
-                secondPList.append(favdel)
+                secondPList.insert(0, favdel)
             for fav in self.userConfig.get("fav_list", []):
                 folder = fav['n'].replace("#", "﹟").replace("$", "﹩")
                 ids = fav['v']
                 fav = '⭐{}${}_add_notplay_fav'.format(folder, ids)
-                secondPList.append(fav)
+                secondPList.insert(0, fav)
             defaultQn = int(self.userConfig['vodDefaultQn'])
             if defaultQn > 80:
                 secondPList.append('⚠️限高1080$80_notplay_vodTMPQn')
