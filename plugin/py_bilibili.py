@@ -37,7 +37,7 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '80',
+        'vodDefaultQn': '116',
         #视频默认解码ID
         'vodDefaultCodec': '7',
         #音频默认码率ID
@@ -51,7 +51,7 @@ class Spider(Spider):
         #付费视频添加一个页面可以使用解析，解析源自行解决
         'bangumi_pay_parse': True,
         #是否显示直播标签筛选中分区的细化标签, 0为不显示，1为显示
-        'showLiveFilterTag': '0',
+        'showLiveFilterTag': '1',
         #主页标签排序, 未登录或cookie失效时自动隐藏动态、收藏、关注、历史
         'cateManual': [
             "动态",
@@ -96,7 +96,7 @@ class Spider(Spider):
 
     #在动态标签的筛选中固定显示他，n为用户名或任意都可以，v必须为准确的UID
     focus_on_up_list = [
-        #{"n":"徐云流浪中国", "v":"697166795"},
+        #{"n":"电影最TOP", "v":"17819768"},
     ]
 
     #在搜索标签的筛选中固定显示搜索词
@@ -1644,12 +1644,12 @@ class Spider(Spider):
             secondPList = [follow, triple, like, coin1, coin2, unfollow, unlike]
             if mlid:
                 favdel = f'☆取消收藏${aid}_{mid}__{mlid}_del_notplay_fav'
-                secondPList.append(favdel)
+                secondPList.insert(0, favdel)
             for fav in self.userConfig.get("fav_list", []):
                 folder = fav['n'].replace("#", "﹟").replace("$", "﹩")
                 ids = fav['v']
                 fav = f'⭐{folder}${aid}_{mid}__{ids}_add_notplay_fav'
-                secondPList.append(fav)
+                secondPList.insert(0, fav)
             secondP = '#'.join(secondPList)
             AllPt.insert(1, '做点什么')
             AllPu.insert(1, secondP)
