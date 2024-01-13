@@ -1,14 +1,10 @@
 # coding=utf-8
 # !/usr/bin/python
-import sys, os, json
+import sys, os, json, threading, hashlib, time, random
 from base.spider import Spider
 from requests import session, utils, head
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-import hashlib
-import time
-import random
 from functools import reduce
 from urllib.parse import quote, urlencode
 
@@ -23,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240107_1",
+        'currentVersion': "20240112_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -42,10 +38,6 @@ class Spider(Spider):
         'vodDefaultCodec': '7',
         #音频默认码率ID
         'vodDefaultAudio': '30280',
-        #从正片中拆分出番剧的预告
-        'hide_bangumi_preview': True,
-        #登陆会员账号后，影视播放页不显示会员专享的标签，更简洁
-        'hide_bangumi_vip_badge': True,
         #非会员播放会员专享视频时，添加一个页面可以使用解析源，解析源自行解决
         'bangumi_vip_parse': True,
         #付费视频添加一个页面可以使用解析，解析源自行解决
@@ -250,12 +242,6 @@ class Spider(Spider):
             if not self.session_master.cookies:
                 self.session_master.cookies = rsp.cookies
 
-    def get_fav_list_dict(self, fav):
-        fav_dict = {
-            'n': fav['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').strip(),
-            'v': fav['id']}
-        return fav_dict
-
     add_fav_filter_event = threading.Event()
 
     def add_fav_filter(self):
@@ -271,7 +257,7 @@ class Spider(Spider):
             jo = self._get_sth(url).json()
             if jo['code'] == 0 and jo.get('data'):
                 fav = jo['data'].get('list')
-                fav_list = list(map(self.get_fav_list_dict, fav))
+                fav_list = list(map(lambda x:{'n': self.cleanCharacters(x['title'].strip()), 'v': x['id']}, fav))
         fav_top = [{"n": "追番", "v": "1"},{"n": "追剧", "v": "2"}]
         fav_config = self.config["filter"].get('收藏')
         if fav_config:
@@ -283,19 +269,12 @@ class Spider(Spider):
         self.add_fav_filter_event.set()
         self.userConfig["fav_list"] = fav_list
 
-    def get_channel_list_dict(self, channel):
-        channel_dict = {
-            'n': channel['name'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').strip(),
-            'v': channel['id']}
-        return channel_dict
-
     def get_channel_list(self):
         url = 'https://api.bilibili.com/x/web-interface/web/channel/category/channel/list?id=100&offset=0&page_size=15'
         jo = self._get_sth(url, 'fake').json()
-        channel_list = []
         if jo['code'] == 0:
             channel = jo['data'].get('channels')
-            self.userConfig['channel_list'] = list(map(self.get_channel_list_dict, channel))
+            self.userConfig['channel_list'] = list(map(lambda x:{'n': self.cleanCharacters(x['name'].strip()),'v': x['id']}, channel))
         return self.userConfig['channel_list']
 
     add_channel_filter_event = threading.Event()
@@ -305,14 +284,12 @@ class Spider(Spider):
         channel_list_task = self.pool.submit(self.get_channel_list)
         if not channel_list:
             channel_list = channel_list_task.result()
-        channel_config = self.config["filter"].get('频道', [])
-        if channel_config:
-            channel_config.insert(0, {
-                "key": "cid",
-                "name": "分区",
-                "value": channel_list,
-            })
-        self.config["filter"]['频道'] = channel_config
+        self.config["filter"]['频道'] = channel_config = [self.config["filter"].get('频道', [])[-1]]
+        channel_config.insert(0, {
+            "key": "cid",
+            "name": "分区",
+            "value": channel_list,
+        })
         self.add_channel_filter_event.set()
 
     add_focus_on_up_filter_event = threading.Event()
@@ -332,14 +309,12 @@ class Spider(Spider):
                         up_list.append(u)
         last_list = [{"n": "登录与设置", "v": "登录"}]
         up_list += last_list
-        dynamic_config = self.config["filter"].get('动态', [])
-        if dynamic_config:
-            dynamic_config.insert(0, {
-                "key": "mid",
-                "name": "UP主",
-                "value": up_list,
-            })
-        self.config["filter"]['动态'] = dynamic_config
+        self.config["filter"]['动态'] = dynamic_config = [self.config["filter"].get('动态', [])[-1]]
+        dynamic_config.insert(0, {
+            "key": "mid",
+            "name": "UP主",
+            "value": up_list,
+        })
         self.add_focus_on_up_filter_event.set()
 
     def get_live_parent_area_list(self, parent_area):
@@ -354,10 +329,9 @@ class Spider(Spider):
     def get_live_list(self):
         url = 'https://api.live.bilibili.com/xlive/web-interface/v1/index/getWebAreaList?source_id=2'
         jo = self._get_sth(url, 'fake').json()
-        cateLive = {}
         if jo['code'] == 0:
             parent = jo['data']['data']
-            self.userConfig['cateLive'] = dict(self.pool.map(self.get_live_parent_area_list, parent))
+            self.userConfig['cateLive'] = dict(map(self.get_live_parent_area_list, parent))
         return self.userConfig['cateLive']
 
     def set_default_cateManualLive(self):
@@ -376,20 +350,19 @@ class Spider(Spider):
         if not cateLive:
             cateLive = cateLive_task.result()
         default_cateManualLive_task = self.pool.submit(self.set_default_cateManualLive)
-        self.config["filter"]['直播'] = []
+        self.config["filter"]['直播'] = live_filter = []
         #分区栏
         cateManualLive = self.userConfig.get('cateManualLive', [])
         if not cateManualLive:
             cateManualLive = default_cateManualLive_task.result()
         if cateManualLive:
             live_area = {'key': 'tid', 'name': '分区', 'value': cateManualLive}
-            self.config["filter"]['直播'].append(live_area)
+            live_filter.append(live_area)
         #显示分区细分
         if int(self.userConfig['showLiveFilterTag']):
             for name in cateLive.values():
-                if len(name['value']['value']) == 1:
-                    continue
-                self.config["filter"]['直播'].append(name['value'])
+                if len(name['value']['value']) > 1:
+                    live_filter.append(name['value'])
         self.add_live_filter_event.set()
 
     add_search_key_event = threading.Event()
@@ -404,13 +377,14 @@ class Spider(Spider):
             focus_on_search_key += list(map(lambda x:x['keyword'], trending))
         keyword = {"key": "keyword", "name": "搜索词","value": []}
         keyword["value"] = list(map(lambda i: {'n': i, 'v': i}, focus_on_search_key))
-        self.config["filter"]['搜索'].insert(0, keyword)
+        self.config["filter"]['搜索'] = search_filter = self.config["filter"]['搜索'][-3:]
+        search_filter.insert(0, keyword)
         self.add_search_key_event.set()
 
     def get_tuijian_filter(self):
         tuijian_filter = {"番剧时间表": "10001", "国创时间表": "10004", "排行榜": "0", "动画": "1", "音乐": "3", "舞蹈": "129", "游戏": "4", "鬼畜": "119", "知识": "36", "科技": "188", "运动": "234", "生活": "160", "美食": "211", "动物": "217", "汽车": "223", "时尚": "155", "娱乐": "5", "影视": "181", "原创": "origin", "新人": "rookie"}
         _dic = [{'n': 'tuijianLis', 'v': '分区'}, {'n': 'rankingLis', 'v': '排行榜'}]
-        filter_lis = []
+        self.config["filter"]['推荐'] = filter_lis = []
         for d in _dic:
             _filter = {"key": "tid" ,'name': d['v'],"value": []}
             t_lis = self.userConfig.get(d['n'], [])
@@ -421,7 +395,6 @@ class Spider(Spider):
                 tf_dict = {'n': t, 'v': tf}
                 _filter["value"].append(tf_dict)
             filter_lis.append(_filter)
-        self.config["filter"]['推荐'] = filter_lis
 
     def __init__(self):
         self.load_config()
@@ -562,7 +535,7 @@ class Spider(Spider):
                     up = vod['modules']["module_author"]['name']
                     ivod = vod['modules']['module_dynamic']['major']['archive']
                     aid = str(ivod['aid']).strip()
-                    title = ivod['title'].strip().replace("<em class=\"keyword\">", "").replace("</em>", "")
+                    title = self.cleanCharacters(ivod['title'].strip())
                     img = ivod['cover'].strip()
                     # remark = str(ivod['duration_text']).strip()
                     remark = str(self.second_to_time(self.str2sec(ivod['duration_text']))).strip() + '  🆙' + str(
@@ -621,7 +594,7 @@ class Spider(Spider):
             "vod_pic": self.format_img(img),
             "vod_remarks": remark
         }]
-        for v in self.pool.map(self.get_found_vod, vod.get('others', [])):
+        for v in map(self.get_found_vod, vod.get('others', [])):
             video.extend(v)
         return video
 
@@ -629,48 +602,37 @@ class Spider(Spider):
 
     def get_found(self, tid, rid, pg):
         result = {}
+        pagecount = 1
         if tid == '推荐':
             query = self.encrypt_wbi(fresh_type=4, feed_version='V8', brush=1, fresh_idx=pg, fresh_idx_1h=pg, ps=self.userConfig['page_size'])[0]
             url = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?' + query
+            pagecount = 99
+        elif tid == '热门':
+            url = 'https://api.bilibili.com/x/web-interface/popular?pn={0}&ps={1}'.format(pg, self.userConfig['page_size'])
+            pagecount = 99
+        elif tid == "入站必刷":
+            url = 'https://api.bilibili.com/x/web-interface/popular/precious'
+        elif tid == "每周必看":
+            if int(pg) == 1:
+                url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
+                jo = self._get_sth(url, 'fake').json()
+                number = self._popSeriesInit = int(jo['data']['list'][0]['number'])
+            else:
+                number = self._popSeriesInit - int(pg) + 1
+            pagecount = self._popSeriesInit
+            url = f'https://api.bilibili.com/x/web-interface/popular/series/one?number={number}'
         else:
             url = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid={0}&type={1}'.format(rid, tid)
-            if tid == '热门':
-                url = 'https://api.bilibili.com/x/web-interface/popular?pn={0}&ps={1}'.format(pg, self.userConfig['page_size'])
-            elif tid == "入站必刷":
-                url = 'https://api.bilibili.com/x/web-interface/popular/precious'
-            elif tid == "每周必看":
-                if not self._popSeriesInit or int(pg) == 1:
-                    url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
-                    jo = self._get_sth(url, 'fake').json()
-                    number = self._popSeriesInit = jo['data']['list'][0]['number']
-                    self._popSeriesNum = [int(number), 1]
-                else:
-                    number = self._popSeriesNum[0]
-                url = 'https://api.bilibili.com/x/web-interface/popular/series/one?number=' + str(number)
         jo = self._get_sth(url).json()
         if jo['code'] == 0:
             videos = []
             vodList = jo['data'].get('item')
-            if not vodList:
-                vodList = jo['data']['list']
-            if len(vodList) > self.userConfig['page_size']:
-                if tid == "每周必看":
-                    _tmp_pg = int(self._popSeriesNum[1])
-                    value = len(vodList) / self.userConfig['page_size'] - _tmp_pg
-                    if value > 0:
-                        value += 1
-                    if not int(value):
-                        self._popSeriesNum = [int(number) - 1, 1]
-                    else:
-                        self._popSeriesNum[1] = _tmp_pg + 1
-                else:
-                    _tmp_pg = pg
-                vodList = self.pagination(vodList, _tmp_pg)
-            for v in self.pool.map(self.get_found_vod, vodList):
+            if not vodList: vodList = jo['data']['list']
+            for v in map(self.get_found_vod, vodList):
                 videos.extend(v)
             result['list'] = videos
             result['page'] = pg
-            result['pagecount'] = 9999
+            result['pagecount'] = pagecount
             result['limit'] = 99
             result['total'] = 999999
         return result
@@ -788,7 +750,7 @@ class Spider(Spider):
                 vodList = vodList['list']
             for vod in vodList:
                 aid = str(vod['roomid']).strip()
-                title = vod['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;", '"')
+                title = self.cleanCharacters(vod['title'])
                 img = vod.get('user_cover')
                 if not img:
                     img = vod.get('cover')
@@ -821,7 +783,7 @@ class Spider(Spider):
                     aid = 'av' + str(vod['recent_aids'][0])
                 else:
                     aid = 'list_' + str(mid) + '_series_' + str(meta.get('series_id', '')).strip()
-                title = meta['name'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;", '"')
+                title = self.cleanCharacters(meta['name'])
                 img = meta.get('cover')
                 remark = meta.get('description', '').strip()
                 videos.append({
@@ -868,7 +830,7 @@ class Spider(Spider):
             vodList = jo['data']['list']['vlist']
             for vod in vodList:
                 aid = str(vod['aid']).strip()
-                title = vod['title'].strip().replace("<em class=\"keyword\">", "").replace("</em>", "")
+                title = self.cleanCharacters(vod['title'].strip())
                 img = vod['pic'].strip()
                 remark = self.second_to_time(self.str2sec(str(vod['length']).strip())) + "  ▶" + self.zh(vod['play'])
                 if not Space:
@@ -941,7 +903,7 @@ class Spider(Spider):
                 elif business == 'archive':
                     aid = 'av' + aid
                     _total = vod['videos']
-                title = vod['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;", '"')
+                title = self.cleanCharacters(vod['title'])
                 if business == 'live':
                     live_status = vod.get('badge', '')
                     remark = live_status + '  🆙' + vod['author_name'].strip()
@@ -980,8 +942,7 @@ class Spider(Spider):
                 # 过滤去掉收藏中的 已失效视频;如果不喜欢可以去掉这个 if条件
                 if vod.get('type') in [2] and vod.get('title') != '已失效视频':
                     aid = str(vod['id']).strip()
-                    title = vod['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",
-                                                                                                            '"')
+                    title = self.cleanCharacters(vod['title'])
                     img = vod['cover'].strip()
                     remark = str(self.second_to_time(vod['duration'])).strip() + "  ▶" + self.zh(vod['cnt_info']['play']) + "　💬" + self.zh(vod['cnt_info']['danmaku'])
                     videos.append({
@@ -999,8 +960,8 @@ class Spider(Spider):
 
     def get_up_videoNum(self, mid):
         info={}
-        url = "https://api.bilibili.com/x/space/navnum?mid={0}".format(mid)
-        jRoot = self._get_sth(url).json()
+        url = f"http://api.bilibili.com/x/space/navnum?mid={mid}"
+        jRoot = self._get_sth(url, 'fake').json()
         if jRoot['code'] == 0:
             info['vod_count'] = str(jRoot['data']['video']).strip()
             pc = divmod(int(info['vod_count']), self.userConfig['page_size'])
@@ -1016,20 +977,20 @@ class Spider(Spider):
 
     def get_up_info(self, mid, data={}):
         self.up_info[mid] = info = self.up_info.get(mid, {})
+        self.pool.submit(self.get_up_videoNum, mid)
         if not data:
-            url = "https://api.bilibili.com/x/web-interface/card?mid={0}".format(mid)
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={mid}"
             jRoot = self._get_sth(url).json()
             if jRoot['code'] == 0:
                 data = jRoot['data']
             else:
                 return info
-        self.pool.submit(self.get_up_videoNum, mid)
         jo = data['card']
         info['following'] = '未关注'
         if data['following']:
             info['following'] = '已关注'
-        info['name'] = info['crname'] = jo['name'].replace("<em class=\"keyword\">", "").replace("</em>", "")
-        info['crname'] = '[a=cr:{"id": "' + mid + '_pubdate_getupvideos","name": "' + info['name'].replace('"', '\\"') + '"}/]' + info['name'] + '[/a]'
+        info['name'] = name = self.cleanCharacters(jo['name'])
+        info['crname'] = '[a=cr:{"id": "' + mid + '_pubdate_getupvideos","name": "' + name.replace('"', '\\"') + '"}/]' + name + '[/a]'
         info['face'] = jo['face']
         info['fans'] = self.zh(jo['fans'])
         info['like_num'] = self.zh(data['like_num'])
@@ -1086,7 +1047,7 @@ class Spider(Spider):
                     aid = self.find_bangumi_id(vod['uri'])
                 else:
                     aid = 'av' + str(vod['id']).strip()
-                title = vod['name'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;", '"')
+                title = self.cleanCharacters(vod['name'])
                 img = vod['cover'].strip()
                 remark = "▶" + str(vod['view_count'])
                 duration = vod.get('duration', '')
@@ -1153,7 +1114,7 @@ class Spider(Spider):
                 img = str(f['owner']['face']).strip()
             elif sort == "正在直播":
                 mid = str(f['room_id'])
-                title = f['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;", '"')
+                title = self.cleanCharacters(f['title'])
                 img = f['cover_from_user'].strip()
                 remark = f['uname'].strip()
             else:
@@ -1270,7 +1231,7 @@ class Spider(Spider):
             return self.get_history(type=type, pg=pg)
         elif tid.endswith('_getbangumiseasons'):
             if int(pg) == 1:
-                return {'list': self.detailContent_args.get('seasons', [])}
+                return {'list': self.detailContent_args[tid.split('_')[0]]['seasons']}
         elif tid.endswith('_getupvideos'):
             mid, order, clicklink = tid.split('_')
             return self.get_up_videos(pg=pg, mid=mid, order=order)
@@ -1281,7 +1242,7 @@ class Spider(Spider):
             result = {}
             if jo.get('code') == 0:
                 videos = []
-                for v in self.pool.map(self.get_found_vod, jo['data']):
+                for v in map(self.get_found_vod, jo['data']):
                     videos.extend(v)
                 result['list'] = videos
                 result['page'] = 1
@@ -1357,7 +1318,7 @@ class Spider(Spider):
                     if value == None:
                         remark += "  💬" + self.zh(vod['danmaku'])
                 if not title:
-                    title = vod['title'].replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').replace('&amp;', '&')
+                    title = self.cleanCharacters(vod['title'])
                 if value:
                     title = value + title
                 videos.append({
@@ -1373,8 +1334,9 @@ class Spider(Spider):
             result['total'] = 999999
         return result
 
-    def cleanSpace(self, str):
-        return str.replace('\n', '').replace('\t', '').replace('\r', '').replace(' ', '')
+    def cleanSpace(self, s): return str(s).replace('\n', '').replace('\t', '').replace('\r', '').replace(' ', '')
+
+    def cleanCharacters(self, s): return str(s).replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').replace('&amp;', '&')
 
     def get_normal_episodes(self, episode):
         this_array = episode.get('this_array')
@@ -1404,10 +1366,10 @@ class Spider(Spider):
                 ep_title = '第' + ep_title + array['title_type']
             badge = episode.get('badge', '')
             if not self.session_vip.cookies and badge == '会员' and self.userConfig['bangumi_vip_parse'] or badge == '付费' and self.userConfig['bangumi_pay_parse']:
-                parse = '1'
-            if self.session_vip.cookies and self.userConfig['hide_bangumi_vip_badge']:
+                array['parse'] = parse = '1'
+            if self.session_vip.cookies:
                 badge = badge.replace('会员', '')
-            if self.userConfig['hide_bangumi_preview'] and badge == '预告':
+            if badge == '预告':
                 badge = badge.replace('预告', '')
                 preview = '1'
             if badge:
@@ -1425,11 +1387,10 @@ class Spider(Spider):
             page = pages[0].split('$')
             page[0] = title
             pages[0] = '$'.join(page)
-            _notfirst = array.get('_notfirst')
             pages[0] = url + '@thisepisode@'
             url = '#'.join(pages)
             array['pages'] = pages
-        fromep = array.get('fromep', '')
+        fromep = array.get('epid', '')
         if fromep == 'ep' + str(epid):
             array['fromep'] = url
         ssid = array.get('ssid', '')
@@ -1437,13 +1398,14 @@ class Spider(Spider):
             if preview:
                 return url, ''
             if parse:
-                array['parse'] = 1
                 if long_title:
                     long_title = '【解析】' + long_title
                 ep_title += long_title
                 parseurl = f"{ep_title}${aid}_{cid}_{epid}_{duration}_{parse}"
+                if this_array:
+                    parseurl += '@' + this_array
                 if fromep == 'ep' + str(epid):
-                    array['fromep'] += '#' + parseurl
+                    array['fromep'] = parseurl + '#' + array['fromep']
             else:
                 parseurl = url
             return url, parseurl
@@ -1489,10 +1451,10 @@ class Spider(Spider):
                         name = '🆙' + name
                     like = '👍' + self.zh(r['like'])
                     name = '[a=cr:{"id": "' + f'{mid}_pubdate_getupvideos","name": "' + name.replace('"', '\\"') + '"}/]' + like + sex + name + '[/a]' + '：'
-                    message = r['content']['message']
+                    message = r['content']['message'].strip()
                     if r'/note-app/' in message:
                         continue
-                    if len(message) > 200 or message.count('n') > 12:
+                    if len(message) > 400 or message.count('n') > 24:
                         message = self.cleanSpace(message)
                     jump_url = r['content'].get('jump_url', {})
                     for key, values in jump_url.items():
@@ -1529,35 +1491,39 @@ class Spider(Spider):
             elif aids[1] == 'liveExtra':
                 return self.setting_liveExtra_detailContent()
             elif aids[1] == 'login':
-                key = aids[2]
-                return self.setting_login_detailContent(key)
+                return self.setting_login_detailContent(aids[2])
         if array.startswith('list'):
             return self.series_detailContent(array)
+        if array.isdigit():
+            return self.live_detailContent(array)
+        if array.startswith('up'):
+            return self.up_detailContent(array)
         self.detailContent_args[array] = this_array = {'this_array': array, **self.detailContent_args.get(array, {})}
-        _notfirst = id = mlid = ''
+        graph_version = this_array.get('graph_version')
+        if graph_version:
+            return self.interaction_detailContent(this_array)
+        _notfirst = id = mlid = query = ''
         aid = this_array.get('aid')
+        epid = this_array.get('epid')
         if aid:
             array = f'av{aid}'
+            if epid:
+                array = epid
             _notfirst = 1
         this_array['_notfirst'] = _notfirst
-        if array.startswith('av') or array.startswith('BV'):
-            for i in array.split('_'):
-                if i.startswith('av'):
-                    id = i.replace('av', '')
-                    query = self.encrypt_wbi(aid=id)[0]
-                elif i.startswith('BV'):
-                    id = i
-                    query = self.encrypt_wbi(bvid=i)[0]
-                elif i.startswith('mlid'):
-                    mlid = i.replace('mlid', '')
-            if not 'vodReply' in this_array:
-                this_array['vodReply'] = self.pool.submit(self.get_vodReply, id)
-        elif 'up' in array:
-            return self.up_detailContent(array)
-        elif 'ss' in array or 'ep' in array:
-            return self.ysContent(array)
-        elif array.isdigit():
-            return self.live_detailContent(array)
+        if array.startswith('ss') or array.startswith('ep'):
+            return self.ysContent(this_array)
+        for i in array.split('_'):
+            if i.startswith('av'):
+                id = i.replace('av', '')
+                query = self.encrypt_wbi(aid=id)[0]
+            elif i.startswith('BV'):
+                id = i
+                query = self.encrypt_wbi(bvid=i)[0]
+            elif i.startswith('mlid'):
+                mlid = i.replace('mlid', '')
+        if not 'vodReply' in this_array:
+            this_array['vodReply'] = self.pool.submit(self.get_vodReply, id)
         if not 'relation' in this_array:
             this_array['relation'] = self.pool.submit(self.get_vod_relation, query)
         url = f'https://api.bilibili.com/x/web-interface/wbi/view/detail?{query}'
@@ -1567,8 +1533,8 @@ class Spider(Spider):
         jo = jRoot['data']['View']
         redirect_url = jo.get('redirect_url', '')
         if 'bangumi' in redirect_url:
-            array = self.find_bangumi_id(redirect_url)
-            return self.ysContent(array)
+            this_array['epid'] = id = self.find_bangumi_id(redirect_url)
+            return self.ysContent(this_array)
         array = this_array['this_array']
         mid = str(jo['owner']['mid'])
         this_array['aid'] = aid = str(jo.get('aid'))
@@ -1576,12 +1542,13 @@ class Spider(Spider):
         if not 'up_info' in this_array:
             this_array['up_info'] = self.pool.submit(self.get_up_info, mid=mid, data=jRoot['data'].get('Card'))
         #正片
-        title = jo['title'].replace("<em class=\"keyword\">", "").replace("</em>", "")
+        title = self.cleanCharacters(jo['title'])
         pic = jo['pic']
-        desc = jo['desc'].strip().replace('\n\n', '\n')
+        desc = jo['desc'].strip()
         typeName = jo['tname']
         date = time.strftime("%Y%m%d", time.localtime(jo['pubdate']))  # 投稿时间本地年月日表示
         stat = jo['stat']
+        _is_stein_gate = jo['rights'].get('is_stein_gate', 0)
         # 演员项展示视频状态，包括以下内容：
         remark = []
         remark.append('▶' + self.zh(stat['view']))
@@ -1627,6 +1594,8 @@ class Spider(Spider):
                 save_args += ['vodReply', 'relation', 'up_info', f'{aid}_{cid}']
         else:
             AllPt = ['视频分集']
+            if _is_stein_gate:
+                AllPt[0] = '互动视频'
         if not ugc_season or not _notfirst:
             if pages:
                 AllPt = [AllPt[0]]
@@ -1653,6 +1622,8 @@ class Spider(Spider):
             secondP = '#'.join(secondPList)
             AllPt.insert(1, '做点什么')
             AllPu.insert(1, secondP)
+        if _is_stein_gate:
+            AllPu[0] = '片头$' + AllPu[0].split('$')[1]
         vod['vod_play_from'] = "$$$".join(AllPt)
         vod['vod_play_url'] = "$$$".join(AllPu)
         if not ugc_season or _notfirst:
@@ -1672,7 +1643,12 @@ class Spider(Spider):
             if vodReply:
                 vod_content.append(vodReply.result())
             vod['vod_content'] = '\n'.join(vod_content)
-        if not ugc_season:
+            if _is_stein_gate:
+                this_array['AllPt'] = AllPt.copy()
+                this_array['AllPu'] = AllPu.copy()
+                this_array['vod_list'] = vod.copy()
+                save_args += ['aid', 'AllPt', 'AllPu', 'vod_list']
+        if not ugc_season and not _is_stein_gate:
             self.detailContent_args.pop(array)
         else:
             _dc_args = {}
@@ -1685,6 +1661,46 @@ class Spider(Spider):
                 vod
             ]
         }
+        return result
+
+    def interaction_detailContent(self, array):
+        this_array = array.get('this_array')
+        aid = array.get('aid')
+        cid = array.get('cid', 0)
+        edgeid = array.get('edgeid', 0)
+        graph_version = array.get('graph_version')
+        url = f'https://api.bilibili.com/x/stein/edgeinfo_v2?aid={aid}&graph_version={graph_version}&edge_id={edgeid}'
+        data = self._get_sth(url, 'fake').json().get('data')
+        result = {}
+        if data:
+            AllPt = array.get('AllPt').copy()
+            AllPu = array.get('AllPu').copy()
+            vod = array.get('vod_list')
+            if edgeid:
+                title = str(data['title']).replace("#", "﹟").replace("$", "﹩")
+                AllPu[0] += f'#{title}${aid}_{cid}___@{this_array}'
+            else:
+                AllPu[0] = AllPu[0].split('#')[0]
+            array['AllPu'] = AllPu.copy()
+            questions = data['edges'].get('questions', [])
+            playUrl = []
+            for q in questions:
+                q_title = q.get('title', '')
+                for c in q.get('choices', []):
+                    c_edgeid = c['id']
+                    c_cid = c['cid']
+                    option = c.get('option', '')
+                    title = ' '.join([q_title, option]).replace("#", "﹟").replace("$", "﹩")
+                    playUrl.append(f'{title}${c_edgeid}_{c_cid}_interaction@{this_array}')
+            if playUrl:
+                AllPt.insert(1, '选项')
+                AllPu.insert(1, '#'.join(playUrl))
+            else:
+                array.pop('edgeid')
+                array.pop('cid')
+            vod['vod_play_from'] = "$$$".join(AllPt)
+            vod['vod_play_url'] = "$$$".join(AllPu)
+            result['list'] = [vod]
         return result
 
     def series_detailContent(self, array):
@@ -1719,30 +1735,25 @@ class Spider(Spider):
         mid = array.replace('up', '')
         self.get_up_info_event.clear()
         self.pool.submit(self.get_up_info, mid)
-        first = '是否关注$ '
         follow = f'关注$_{mid}__1__notplay_follow'
         unfollow = f'取消关注$_{mid}__2__notplay_follow'
         qqfollow = f'悄悄关注$_{mid}__3__notplay_follow'
         spfollow = f'特别关注$_{mid}__-10_special_notplay_follow'
         unspfollow = f'取消特别关注$_{mid}__0_special_notplay_follow'
-        doWhat = [first, follow, qqfollow, spfollow, unfollow, unspfollow]
-        doWhat = '#'.join(doWhat)
+        doWhat = [follow, qqfollow, spfollow, unfollow, unspfollow]
+        doWhat = '做点什么$ $$$' + '#'.join(doWhat)
         self.get_up_info_event.wait()
         up_info = self.up_info[mid]
         vod = {
-            "vod_id": 'up' + str(mid),
             "vod_name": up_info['name'] + "  个人主页",
             "vod_pic": up_info['face'],
             "vod_director": '🆙 ' + up_info['name'] + "　" + up_info['following'] + '　UID：' + str(mid),
+            "vod_remarks": "👥 " + up_info['fans'] + "　🎬 " + up_info['vod_count'] + "　👍 " + up_info['like_num'],
             "vod_content": up_info['desc'],
-            'vod_play_from': '关注TA$$$动态标签筛选查看视频投稿',
+            'vod_play_from': '做点什么$$$关注TA',
             'vod_play_url': doWhat
         }
-        remark = "👥 " + up_info['fans'] + "　🎬 " + up_info['vod_count'] + "　👍 " + up_info['like_num']
-        vod["vod_remarks"] = remark
         tabfilter = self.config['filter'].get('动态')
-        if not tabfilter:
-            tabfilter = self.config['filter'].get('UP', [])
         vod["vod_actor"] = ' '.join(map(lambda x: '[a=cr:{"id": "' + str(mid) + '_' + x['v'] +'_getupvideos","name": "' + up_info['name'].replace('"', '\\"') + '  ' + x['n'] + '"}/]' + x['n'] + '[/a]', tabfilter[-1]['value']))
         result = {
             'list': [
@@ -1928,59 +1939,70 @@ class Spider(Spider):
     def get_all_season(self, season):
         season_id = str(season['season_id'])
         season_title = season['season_title']
-        if season_id == self.detailContent_args['ssid']:
-            self.detailContent_args['s_title'] = season_title
+        this_array = self.detailContent_args[season['this_array']]
+        if season_id == this_array['ssid']:
+            this_array['s_title'] = season_title
         pic = season['cover']
         remark = season['new_ep']['index_show']
         result = {
-            "vod_id": season_id + 'ss',
-            "vod_name": '系列：' + season_title,
+            "vod_id": 'ss' + season_id,
+            "vod_name": season_title,
             "vod_pic": self.format_img(pic),
             "vod_remarks": remark}
         return result
 
-    def get_bangumi_section(self, section):
+    def get_bangumi_section(self, section, array):
         sec_title = section['title'].replace("#", "﹟").replace("$", "﹩")
         sec_type = section['type']
         if sec_type in [1, 2] and len(section['episode_ids']) == 0:
             episodes = section['episodes']
-            playUrl = '#'.join(map(lambda x: self.get_normal_episodes(x)[0], episodes))
+            playUrl = list(map(lambda x: self.get_normal_episodes(x)[0], map(lambda e: self.add_this_array(e, array), episodes)))
             return (sec_title, playUrl)
 
-    def ysContent(self, array):
+    def ysContent(self, this_array):
+        array = this_array['this_array']
+        aid = this_array.get('aid')
+        epid = this_array.get('epid')
+        if epid:
+            array = epid
+            this_array.pop('epid')
         if 'ep' in array:
-            self.detailContent_args['fromep'] = array
             aid = 'ep_id=' + array.replace('ep', '')
+            this_array['epid'] = array
         else:
             aid = 'season_id=' + array.replace('ss', '')
+        array = this_array['this_array']
         url = "https://api.bilibili.com/pgc/view/web/season?{0}".format(aid)
         jo = self._get_sth(url, 'fake').json().get('result', {})
-        self.detailContent_args['ssid'] = ssid = str(jo['season_id'])
+        this_array['ssid'] = ssid = str(jo['season_id'])
         title = jo['title']
-        self.detailContent_args['s_title'] = jo['season_title']
-        self.detailContent_args['title_type'] = '集'
+        this_array['s_title'] = jo['season_title']
+        this_array['title_type'] = '集'
         if jo['type'] in [1, 4]:
-            self.detailContent_args['title_type'] = '话'
+            this_array['title_type'] = '话'
+        remark = jo['new_ep']['desc']
+        if 'rating' in jo:
+            remark = str(jo['rating']['score']) + '分  ' + remark
         #添加系列到搜索
         seasons = jo.get('seasons')
         if len(seasons) == 1:
-            self.detailContent_args['s_title'] = seasons[0]['season_title']
+            this_array['s_title'] = seasons[0]['season_title']
             seasons = 0
         else:
-            self.detailContent_args['seasons'] = list(self.pool.map(self.get_all_season, seasons))
+            this_array['seasons'] = list(map(self.get_all_season, map(lambda e: self.add_this_array(e, array), seasons)))
+            remark += '  [a=cr:{"id": "' + array + '_getbangumiseasons","name": "' + title.replace('"', '\\"') + '"}/]更多系列[/a]'
         #获取正片
         episodes = jo.get('episodes')
         #获取花絮
         section_task = []
         for s in jo.get('section', []):
             if s:
-                t = self.pool.submit(self.get_bangumi_section, s)
+                t = self.pool.submit(self.get_bangumi_section, s, array)
                 section_task.append(t)
         pic = jo['cover']
         typeName = jo['share_sub_title']
         date = jo['publish']['pub_time'][0:4]
         dec = jo['evaluate']
-        remark = jo['new_ep']['desc']
         stat = jo['stat']
         # 演员和导演框展示视频状态，包括以下内容：
         status = "▶" + self.zh(stat['views']) + "　❤" + self.zh(stat['favorites'])
@@ -1993,57 +2015,49 @@ class Spider(Spider):
             "vod_actor": status,
             "vod_content": dec
         }
-        if seasons:
-            remark += '  [a=cr:{"id": "_getbangumiseasons","name": "' + title.replace('"', '\\"') + '"}/]更多系列[/a]'
-            seasons = 0
-        if 'rating' in jo:
-            remark = str(jo['rating']['score']) + '分  ' + remark
         vod["vod_remarks"] = remark
-        ZhuiPf = []
-        ZhuiPu = []
-        if self.userid:
-            ZhuiPf = ['追番剧']
-            ZhuiPu = [f'❤追番剧$__{ssid}_add__notplay_zhui#💔取消追番剧$__{ssid}_del__notplay_zhui']
-        FirstPf = []
-        FirstPu = []
-        PreviewPf = []
         PreviewPu = []
-        ParsePf = []
-        ParsePu = []
+        fromL = []
+        urlL = []
         if episodes:
-            for x, y in self.pool.map(self.get_normal_episodes, episodes):
+            FirstPu = []
+            ParsePu = []
+            for x, y in map(self.get_normal_episodes, map(lambda e: self.add_this_array(e, array), episodes)):
                 if y:
                     FirstPu.append(x)
                     ParsePu.append(y)
                 else:
                     PreviewPu.append(x)
+            if this_array.get('parse') and ParsePu:
+                fromL.append(str(this_array['s_title']) + '【解析】')
+                urlL.append('#'.join(ParsePu))
             if FirstPu:
-                FirstPf = [self.detailContent_args['s_title']]
-                FirstPu = ['#'.join(FirstPu)]
-            if PreviewPu:
-                PreviewPf = ['预告']
-                PreviewPu = ['#'.join(PreviewPu)]
-            if not self.detailContent_args.get('parse'):
-                ParsePu = []
-            if ParsePu:
-                ParsePf = [str(self.detailContent_args['s_title']) + '【解析】']
-                ParsePu = ['#'.join(ParsePu)]
-        fromL = ParsePf + FirstPf + PreviewPf
-        urlL = ParsePu + FirstPu + PreviewPu
+                fromL.append(str(this_array['s_title']))
+                urlL.append('#'.join(FirstPu))
+        sectionF = []
+        sectionU = []
         for t in as_completed(section_task):
             s = t.result()
             if s:
                 if s[0] == '预告':
-                    PreviewPu = ['#'.join(s[1])]
+                    PreviewPu += s[1]
                 else:
-                    fromL.append(s[0])
-                    urlL.append(s[1])
-        fromep = self.detailContent_args.get('fromep', '')
+                    sectionF.append(s[0])
+                    sectionU.append('#'.join(s[1]))
+        if PreviewPu:
+            fromL.append('预告')
+            urlL.append('#'.join(PreviewPu))
+        fromL += sectionF
+        urlL += sectionU
+        fromep = this_array.get('fromep')
         if fromep:
-            fromL = ['B站'] + fromL
-            urlL = [fromep] + urlL
-        fromL.insert(1, '$$$'.join(ZhuiPf))
-        urlL.insert(1, '$$$'.join(ZhuiPu))
+            fromL.insert(0, 'B站')
+            urlL.insert(0, fromep)
+        if self.userid:
+            ZhuiPf = '追番剧'
+            ZhuiPu = f'❤追番剧$__{ssid}_add__notplay_zhui#💔取消追番剧$__{ssid}_del__notplay_zhui'
+            fromL.insert(1, ZhuiPf)
+            urlL.insert(1, ZhuiPu)
         vod['vod_play_from'] = '$$$'.join(fromL)
         vod['vod_play_url'] = '$$$'.join(urlL)
         result = {
@@ -2066,7 +2080,7 @@ class Spider(Spider):
                     'codec': {'avc': '0', 'hevc': '1'},
                     'format': {'flv': '0', 'ts': '1', 'fmp4': '2'},
                 }
-                liveDic['qn'] = dict(self.pool.map(lambda x:(x['qn'], x['desc']), playurl_info['playurl']['g_qn_desc']))
+                liveDic['qn'] = dict(map(lambda x:(x['qn'], x['desc']), playurl_info['playurl']['g_qn_desc']))
                 vodList = []
                 for i in stream:
                     vodList.extend(i['format'])
@@ -2084,7 +2098,7 @@ class Spider(Spider):
                 for key, value in api2_playUrl.items():
                     playFrom.append(key)
                     playUrl.append('#'.join(value))
-        result = {'From': playFrom, 'url': playUrl}
+        result = playFrom, playUrl
         return result
 
     def live_detailContent(self, room_id):
@@ -2096,11 +2110,11 @@ class Spider(Spider):
             jo = jRoot['data']
             mid = str(jo["uid"])
             up_info = self.pool.submit(self.get_up_info, mid)
-            title = jo['title'].replace("<em class=\"keyword\">", "").replace("</em>", "")
+            title = self.cleanCharacters(jo['title'])
             pic = jo.get("user_cover")
             desc = jo.get('description')
             typeName = jo.get('parent_area_name') + '--' + jo.get('area_name')
-            live_status = jo.get('live_status', '')
+            live_status = int(jo.get('live_status'))
             if live_status:
                 live_status = "开播时间：" + jo.get('live_time').replace('-', '.')
             else:
@@ -2110,23 +2124,19 @@ class Spider(Spider):
                 "vod_name": title,
                 "vod_pic": pic,
                 "type_name": typeName,
+                "vod_remarks": "房间号：" + room_id + "　" + live_status,
                 "vod_content": desc,
             }
-            remark = "房间号：" + room_id + "　" + live_status
-            vod["vod_remarks"] = remark
-            secondPFrom = ''
-            secondP = ''
+            playFrom = get_live_api2_playurl.result()[0]
+            playUrl = get_live_api2_playurl.result()[1]
             if self.userid:
-                secondPFrom = '关注Ta'
+                secondF = '关注TA'
                 first = '是否关注$ '
                 follow = f'➕关注$_{mid}__1__notplay_follow'
                 unfollow = f'➖取关$_{mid}__2__notplay_follow'
                 secondPList = [first, follow, unfollow]
                 secondP = '#'.join(secondPList)
-            playFrom = get_live_api2_playurl.result().get('From', [])
-            playUrl = get_live_api2_playurl.result().get('url', [])
-            if secondPFrom:
-                playFrom.insert(1, secondPFrom)
+                playFrom.insert(1, secondF)
                 playUrl.insert(1, secondP)
             vod['vod_play_from'] = '$$$'.join(playFrom)
             vod['vod_play_url'] = '$$$'.join(playUrl)
@@ -2176,19 +2186,10 @@ class Spider(Spider):
         finally:
             self.stop_heartbeat_event.set()
 
-    def start_heartbeat(self, aid, cid, ssid, epid, duration):
-        query = self.encrypt_wbi(aid=aid, cid=cid)[0]
-        url = f'https://api.bilibili.com/x/player/wbi/v2?{query}'
-        data = self._get_sth(url).json().get('data',{})
+    def start_heartbeat(self, aid, cid, ssid, epid, duration, played_time):
         heartbeatInterval = int(self.userConfig['heartbeatInterval'])
         if not self.userid or not heartbeatInterval:
             return
-        played_time = 0
-        duration = int(duration)
-        if int(data.get('last_play_cid', 0)) == int(cid):
-            last_play_time = int(data.get('last_play_time'))
-            if last_play_time > 0:
-                played_time = int(last_play_time / 1000)
         heartbeat_times = int((duration - played_time) / heartbeatInterval) + 1
         url = 'https://api.bilibili.com/x/click-interface/web/heartbeat'
         data = {'aid': str(aid), 'cid': str(cid), 'csrf': str(self.csrf)}
@@ -2217,7 +2218,7 @@ class Spider(Spider):
             heartbeat_count += 1
 
     wbi_key = {}
-    def get_wbiKey(self, wts):
+    def get_wbiKey(self, hour):
         r = self.fetch("https://api.bilibili.com/x/web-interface/nav", headers=self.header)
         wbi_img_url = r.json()['data']['wbi_img']['img_url']
         wbi_sub_url = r.json()['data']['wbi_img']['sub_url']
@@ -2228,13 +2229,14 @@ class Spider(Spider):
         le = reduce(lambda s, i: s + ae[i], oe, "")[:32]
         self.wbi_key = {
             "key": le,
-            "wts": wts
+            "hour": hour
         }
 
     def encrypt_wbi(self, **params):
         wts = round(time.time())
-        if not self.wbi_key or abs(wts - self.wbi_key['wts']) < 120:
-            self.get_wbiKey(wts)
+        hour = time.gmtime(wts).tm_hour
+        if not self.wbi_key or hour != self.wbi_key['hour']:
+            self.get_wbiKey(hour)
         params["wts"] = wts
         params["dm_img_list"] = []
         dm_rand = ['QQ','Qg','Qw','RA','RQ','Rg']
@@ -2294,7 +2296,7 @@ class Spider(Spider):
             data.update({'aid': str(aid)})
             url = 'https://api.bilibili.com/x/web-interface/archive/like/triple'
         self._post_sth(url=url, data=data)
-        self.fetch(url='http://127.0.0.1:9978/action?do=refresh&type=detail')
+        self._refreshDetail()
 
     def get_cid(self, aid, cid):
         url = f'https://api.bilibili.com/x/web-interface/view?aid={aid}&cid={cid}'
@@ -2519,9 +2521,9 @@ class Spider(Spider):
         result = []
         query = self.encrypt_wbi(aid=aid, cid=cid)[0]
         url = f'https://api.bilibili.com/x/player/wbi/v2?{query}'
-        jRoot = self._get_sth(url, 'master').json()
-        if jRoot['code'] == 0:
-            for sub in jRoot['data']['subtitle'].get('subtitles', []):
+        data = self._get_sth(url, 'master').json().get('data')
+        if data:
+            for sub in data['subtitle'].get('subtitles', []):
                 lanDoc = str(sub.get('lan_doc', ''))
                 lanUrl = sub.get('subtitle_url')
                 if lanUrl.startswith('//'):
@@ -2542,7 +2544,13 @@ class Spider(Spider):
                         "format": "application/x-subrip"
                     }
                 )
-        return result
+        played_time = 0
+        if int(data.get('last_play_cid', 0)) == int(cid):
+            played_time = int(data.get('last_play_time'))
+            if played_time > 0:
+                played_time = int(played_time / 1000)
+        graph_version = data.get('interaction', {}).get('graph_version', '')
+        return result, played_time, graph_version
 
     pC_urlDic = {}
     def _get_playerContent(self, result, aid, cid, epid):
@@ -2610,16 +2618,16 @@ class Spider(Spider):
 
     def playerContent(self, flag, id, vipFlags):
         self.pool.submit(self.stop_heartbeat)
-        result = {'playUrl': '', 'url': ''}
-        array = self.detailContent_args
+        result = {}
+        this_array = ''
         if '@' in id:
             id, this_array = id.split("@")
-            array = self.detailContent_args.get(this_array, array)
+        array = self.detailContent_args.get(this_array, self.detailContent_args)
         ids = id.split("_")
-        if 'live' == ids[0]:
-            return self.live_playerContent(flag, id, vipFlags)
         if len(ids) < 2:
             return result
+        if 'live' == ids[0]:
+            return self.live_playerContent(flag, id, vipFlags)
         aid = ids[0]
         cid = ids[1]
         if 'setting' in ids:
@@ -2638,6 +2646,11 @@ class Spider(Spider):
             return result
         elif 'notplay' in ids:
             self.pool.submit(self.do_notplay, ids)
+            return result
+        elif 'interaction' in ids:
+            array['edgeid'] = aid
+            array['cid'] = cid
+            self.pool.submit(self._refreshDetail)
             return result
         aid, cid, epid, dur, parse = id.split("_")
         if not cid or not dur:
@@ -2662,14 +2675,18 @@ class Spider(Spider):
         result["parse"] = '0'
         result["contentType"] = ''
         result["header"] = self.header
-        result["subs"] = get_sub.result()
+        result["subs"], played_time, graph_version = get_sub.result()
+        old_gv = array.get('graph_version', '')
         old_aid = array.get('aid')
         if old_aid and aid != old_aid or f'{aid}_{cid}' in array:
             array['aid'] = aid
             self.pool.submit(self._refreshDetail, 2)
+        elif graph_version and old_gv != graph_version:
+            array['graph_version'] = graph_version
+            self.pool.submit(self._refreshDetail)
         else:
             #回传播放记录
-            heartbeat = self.pool.submit(self.start_heartbeat, aid, cid, ssid, epid, dur)
+            heartbeat = self.pool.submit(self.start_heartbeat, aid, cid, ssid, epid, int(dur), played_time)
             self.task_pool.append(heartbeat)
         return result
 
@@ -2680,7 +2697,7 @@ class Spider(Spider):
             self.pool.submit(self.post_live_history, room_id)
         url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id={0}&protocol=0,1&format={1}&codec={2}&qn={3}&ptype=8&platform=web&dolby=5&panorama=1'.format(room_id, format, codec, qn)
         jo = self._get_sth(url, 'vip').json()
-        result = {'playUrl': '', 'url': ''}
+        result = {}
         if jo['code'] == 0:
             try:
                 playurl = jo['data']['playurl_info'].get('playurl')
@@ -2715,6 +2732,7 @@ class Spider(Spider):
         if type(ja) == dict:
             self.pC_urlDic[id][mediaType] = url = [ja.get('baseUrl', ja.get('url', ''))]
             url.extend(ja.get('backup_url', []))
+            self.pC_urlDic[id]['deadline'] = int(dict(map(lambda x: x.split('=')[:2], url[0].split('?')[1].split('&'))).get('deadline', 0))
         for u in url:
             t = self.pool.submit(self._testUrl, u, id, mediaType)
 
@@ -2740,12 +2758,13 @@ class Spider(Spider):
         if _type in ['durl', 'video', 'audio']:
             if _type == 'durl':
                 _type = qn
-            if type(urlDic[_type]) == dict:
-                self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
-            url = random.choice(urlDic[_type])
-            _deadline = dict(map(lambda x: x.split('=')[:2], url.split('?')[1].split('&'))).get('deadline', 0)
             _nowtime = round(time.time())
-            if _type != 'audio' and int(_deadline) - _nowtime < 1800:
+            _deadline = urlDic.get('deadline')
+            if type(urlDic[_type]) == dict or (_deadline - _nowtime) % 10 == 0:
+                self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
+                _deadline = urlDic.get('deadline')
+            url = random.choice(urlDic[_type])
+            if not url or _type != 'audio' and _deadline - _nowtime < 1800:
                 self._get_playerContent({}, aid, cid, urlDic['epid'])
                 urlDic = self.pC_urlDic[f'{aid}_{cid}']
                 if _type == 'video':
@@ -2801,5 +2820,5 @@ class Spider(Spider):
     header = {
         'Origin': 'https://www.bilibili.com',
         'Referer': 'https://www.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
     }
