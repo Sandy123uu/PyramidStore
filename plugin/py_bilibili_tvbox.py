@@ -20,7 +20,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240120_1",
+        'currentVersion': "20240202_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -845,7 +845,12 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order)[0]
+        dm_rand = 'ABCDEFGHIJK'
+        dm_img_list = '[]'
+        dm_img_str = ''.join(random.sample(dm_rand, 2))
+        dm_cover_img_str = ''.join(random.sample(dm_rand, 2))
+        dm_img_inter = '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}'
+        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order, dm_img_list=dm_img_list, dm_img_str=dm_img_str, dm_cover_img_str=dm_cover_img_str, dm_img_inter=dm_img_inter)[0]
         url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
         jo = self._get_sth(url, 'fake').json()
         videos = []
@@ -1386,7 +1391,7 @@ class Spider(Spider):
     def get_vod_hot_reply(self, oid):
         query = self.encrypt_wbi(type=1, ps=30, oid=str(oid))[0]
         url = f'http://api.bilibili.com/x/v2/reply/wbi/main?{query}'
-        jRoot = self._get_sth(url, 'fake').json()
+        jRoot = self._get_sth(url).json()
         if jRoot['code'] == 0:
             replies = jRoot['data'].get('replies')
             top_replies = jRoot['data'].get('top_replies')
@@ -2212,10 +2217,6 @@ class Spider(Spider):
         if not self.wbi_key or hour != self.wbi_key['hour']:
             self.get_wbiKey(hour)
         params["wts"] = wts
-        params["dm_img_list"] = []
-        dm_rand = ['QQ','Qg','Qw','RA','RQ']
-        params["dm_img_str"] = random.choice(dm_rand)
-        params["dm_cover_img_str"] = random.choice(dm_rand)
         params = dict(sorted(params.items()))
         params = {k : ''.join(filter(lambda chr: chr not in "!'()*", str(v))) for k, v in params.items()}
         Ae = urlencode(params)

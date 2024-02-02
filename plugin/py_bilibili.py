@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240120_2",
+        'currentVersion': "20240202_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -591,9 +591,8 @@ class Spider(Spider):
             if int(pg) == 1:
                 url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
                 jo = self._get_sth(url, 'fake').json()
-                number = self._popSeriesInit = int(jo['data']['list'][0]['number'])
-            else:
-                number = self._popSeriesInit - int(pg) + 1
+                self._popSeriesInit = int(jo['data']['list'][0]['number'])
+            number = self._popSeriesInit - int(pg) + 1
             pagecount = self._popSeriesInit
             url = f'https://api.bilibili.com/x/web-interface/popular/series/one?number={number}'
         else:
@@ -797,7 +796,12 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order)[0]
+        dm_rand = 'ABCDEFGHIJK'
+        dm_img_list = '[]'
+        dm_img_str = ''.join(random.sample(dm_rand, 2))
+        dm_cover_img_str = ''.join(random.sample(dm_rand, 2))
+        dm_img_inter = '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}'
+        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order, dm_img_list=dm_img_list, dm_img_str=dm_img_str, dm_cover_img_str=dm_cover_img_str, dm_img_inter=dm_img_inter)[0]
         url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
         jo = self._get_sth(url, 'fake').json()
         videos = []
@@ -1346,7 +1350,7 @@ class Spider(Spider):
     def get_vodReply(self, oid, pg=''):
         query = self.encrypt_wbi(type=1, ps=30, oid=str(oid))[0]
         url = f'https://api.bilibili.com/x/v2/reply/wbi/main?{query}'
-        jRoot = self._get_sth(url, 'fake').json()
+        jRoot = self._get_sth(url).json()
         result = ''
         if jRoot['code'] == 0:
             replies = jRoot['data'].get('replies')
@@ -1552,7 +1556,7 @@ class Spider(Spider):
             if len(desc) < 60 and desc.count('n') < 5:
                 desc += '\n' * int(4 - len(desc) / 29)
             vod_content.append(desc)
-            vod_tags = '；'.join(sorted(map(lambda x: '[a=cr:{"id": "' + x['tag_name'].replace('"', '\\"') + '_clicklink","name":"' + x['tag_name'].replace('"', '\\"') + '"}/]' + x['tag_name'] + '[/a]', jRoot['data'].get('Tags', [])), key=len))
+            vod_tags = '；'.join(sorted(map(lambda x: '[a=cr:{"id": "' + x['tag_name'].replace('"', '\\"') + '_clicklink","name":"' + x['tag_name'].replace('"', '\\"') + '"}/]' + '#' + x['tag_name'] + '#' + '[/a]', jRoot['data'].get('Tags', [])), key=len))
             vod_content.append(vod_tags)
             #视频关系
             up_info = this_array.get('up_info')
@@ -2155,10 +2159,6 @@ class Spider(Spider):
         if not self.wbi_key or hour != self.wbi_key['hour']:
             self.get_wbiKey(hour)
         params["wts"] = wts
-        params["dm_img_list"] = []
-        dm_rand = ['QQ','Qg','Qw','RA','RQ','Rg']
-        params["dm_img_str"] = random.choice(dm_rand)
-        params["dm_cover_img_str"] = random.choice(dm_rand)
         params = dict(sorted(params.items()))
         params = {k : ''.join(filter(lambda chr: chr not in "!'()*", str(v))) for k, v in params.items()}
         Ae = urlencode(params)
@@ -2618,10 +2618,8 @@ class Spider(Spider):
             extra = str(codec['url_info'][0]['extra'])
             playurl = host + base_url + extra
             result["url"] = playurl
-            if ".flv" in playurl:
-                result["contentType"] = 'video/x-flv'
-            else:
-                result["contentType"] = ''
+            result["contentType"] = ''
+            if ".flv" in playurl: result["contentType"] = 'video/x-flv'
         else:
             return result
         result["parse"] = '0'
@@ -2663,7 +2661,7 @@ class Spider(Spider):
         urlDic = self.pC_urlDic[f'{aid}_{cid}']
         if _type == 'dash':
             mpd = self.get_dash(urlDic['mpd'], aid, cid, qn)
-            return [200, "application/octet-stream", action, mpd]
+            return [200, "application/dash+xml", action, mpd]
         if _type in ['durl', 'video', 'audio']:
             if _type == 'durl':
                 _type = qn
@@ -2726,5 +2724,5 @@ class Spider(Spider):
     header = {
         'Origin': 'https://www.bilibili.com',
         'Referer': 'https://www.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'
     }
