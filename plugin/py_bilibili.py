@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240202_1",
+        'currentVersion': "20240222_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -478,7 +478,7 @@ class Spider(Spider):
             pic_url = {'qrcode': url, 'chs': '208x117'}
             video.append({
                 "vod_id": 'setting_login_' + id,
-                'vod_pic': 'https://swf.ming92.tk/?' + urlencode(pic_url),
+                'vod_pic': 'http://jm92swf.s1002.xrea.com/?' + urlencode(pic_url),
             })
         result['list'] = video
         result['page'] = 1
@@ -1662,10 +1662,9 @@ class Spider(Spider):
         self.pool.submit(self.get_up_info, mid)
         follow = f'关注$_{mid}__1__notplay_follow'
         unfollow = f'取消关注$_{mid}__2__notplay_follow'
-        qqfollow = f'悄悄关注$_{mid}__3__notplay_follow'
         spfollow = f'特别关注$_{mid}__-10_special_notplay_follow'
         unspfollow = f'取消特别关注$_{mid}__0_special_notplay_follow'
-        doWhat = [follow, qqfollow, spfollow, unfollow, unspfollow]
+        doWhat = [follow, spfollow, unfollow, unspfollow]
         doWhat = '做点什么$ $$$' + '#'.join(doWhat)
         self.get_up_info_event.wait()
         up_info = self.up_info[mid]
