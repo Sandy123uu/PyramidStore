@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240222_1",
+        'currentVersion': "20240224_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -475,10 +475,14 @@ class Spider(Spider):
                         "vod_pic": self.format_img(user['face']),
                         "vod_remarks": isVIP[user['isVIP']] + typeName + ' ' + isLogin[user['isLogin']]
                     })
-            pic_url = {'qrcode': url, 'chs': '208x117'}
+            pic_url = {'chl': url, 'chs': '208x117', 'cht': 'qr', 'choe': 'UTF-8', 'chld': 'M'}
             video.append({
                 "vod_id": 'setting_login_' + id,
                 'vod_pic': 'http://jm92swf.s1002.xrea.com/?' + urlencode(pic_url),
+            })
+            video.append({
+                "vod_id": 'setting_login_' + id,
+                'vod_pic': 'https://bili.ming1992.xyz/chart?' + urlencode(pic_url),
             })
         result['list'] = video
         result['page'] = 1
@@ -1912,7 +1916,7 @@ class Spider(Spider):
         if len(seasons) == 1:
             this_array['s_title'] = seasons[0]['season_title']
             seasons = 0
-        else:
+        elif len(seasons) > 1:
             this_array['seasons'] = list(map(self.get_all_season, map(lambda e: self.add_this_array(e, array), seasons)))
             remark += '  [a=cr:{"id": "' + array + '_getbangumiseasons","name": "' + title.replace('"', '\\"') + '"}/]更多系列[/a]'
         #获取正片
@@ -2467,9 +2471,9 @@ class Spider(Spider):
         self.pC_urlDic[f'{aid}_{cid}'] = urlDic = {**self.pC_urlDic.get(f'{aid}_{cid}', {}), 'aid': aid, 'cid': cid, 'epid': epid}
         vodDefaultQn = self.userConfig['vodDefaultQn']
         if epid:
-            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl?aid={}&cid={}&qn={}&fnval=4048&fnver=0&fourk=1'.format(aid, cid, vodDefaultQn)
+            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl?aid={}&cid={}&qn={}&fnval=4048&fnver=0&fourk=1&from_client=BROWSER'.format(aid, cid, vodDefaultQn)
         else:
-            query = self.encrypt_wbi(avid=aid, cid=cid, qn=vodDefaultQn, fnval=4048, fnver=0, fourk=1)[0]
+            query = self.encrypt_wbi(avid=aid, cid=cid, qn=vodDefaultQn, fnval=4048, fnver=0, fourk=1, from_client='BROWSER')[0]
             url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
         jRoot = self._get_sth(url, 'vip').json()
         ssid = ''
