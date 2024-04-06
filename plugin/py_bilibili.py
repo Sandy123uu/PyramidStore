@@ -19,7 +19,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240224_1",
+        'currentVersion': "20240324_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -800,12 +800,7 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        dm_rand = 'ABCDEFGHIJK'
-        dm_img_list = '[]'
-        dm_img_str = ''.join(random.sample(dm_rand, 2))
-        dm_cover_img_str = ''.join(random.sample(dm_rand, 2))
-        dm_img_inter = '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}'
-        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order, dm_img_list=dm_img_list, dm_img_str=dm_img_str, dm_cover_img_str=dm_cover_img_str, dm_img_inter=dm_img_inter)[0]
+        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order)[0]
         url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
         jo = self._get_sth(url, 'fake').json()
         videos = []
@@ -1557,8 +1552,8 @@ class Spider(Spider):
         vod['vod_play_url'] = "$$$".join(AllPu)
         if not ugc_season or _notfirst:
             vod_content = ['[a=cr:{"id": "' + str(aid) + '_related","name":"' + title.replace('"', '\\"') + '"}/]相关推荐[/a]']
-            if len(desc) < 60 and desc.count('n') < 5:
-                desc += '\n' * int(4 - len(desc) / 29)
+            if len(desc) < 60 and desc.count('n') < 4:
+                desc += '\n' * int(3 - len(desc) / 29)
             vod_content.append(desc)
             vod_tags = '；'.join(sorted(map(lambda x: '[a=cr:{"id": "' + x['tag_name'].replace('"', '\\"') + '_clicklink","name":"' + x['tag_name'].replace('"', '\\"') + '"}/]' + '#' + x['tag_name'] + '#' + '[/a]', jRoot['data'].get('Tags', [])), key=len))
             vod_content.append(vod_tags)
@@ -2162,6 +2157,11 @@ class Spider(Spider):
         if not self.wbi_key or hour != self.wbi_key['hour']:
             self.get_wbiKey(hour)
         params["wts"] = wts
+        dm_rand = 'ABCDEFGHIJK'
+        params["dm_img_list"] = '[]'
+        params["dm_img_str"] = ''.join(random.sample(dm_rand, 2))
+        params["dm_cover_img_str"] = ''.join(random.sample(dm_rand, 2))
+        params["dm_img_inter"] = '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}'
         params = dict(sorted(params.items()))
         params = {k : ''.join(filter(lambda chr: chr not in "!'()*", str(v))) for k, v in params.items()}
         Ae = urlencode(params)
@@ -2191,7 +2191,7 @@ class Spider(Spider):
     def do_notplay(self, ids):
         aid, mid, ssid, arg0, arg1, this, what= ids
         data = {'csrf': str(self.csrf)}
-        url = ''
+        doShare = url = ''
         if what == 'follow':
             if arg1 == 'special':
                 data.update({'fids': str(mid), 'tagids': str(arg0)})
@@ -2216,6 +2216,10 @@ class Spider(Spider):
             data.update({'aid': str(aid)})
             url = 'https://api.bilibili.com/x/web-interface/archive/like/triple'
         self._post_sth(url=url, data=data)
+        if what in ['like', 'coin', 'fav', 'triple']:
+            data = {'aid': str(aid), 'csrf': str(self.csrf), 'csrf_token': str(self.csrf)}
+            url = 'https://api.bilibili.com/x/web-interface/share/add'
+            self.pool.submit(self._post_sth, url=url, data=data)
         self._refreshDetail()
 
     def get_cid(self, aid, cid):
@@ -2727,5 +2731,5 @@ class Spider(Spider):
     header = {
         'Origin': 'https://www.bilibili.com',
         'Referer': 'https://www.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'
     }
