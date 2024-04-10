@@ -20,7 +20,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240324_1",
+        'currentVersion': "20240409_2",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -502,14 +502,14 @@ class Spider(Spider):
                         "vod_pic": self.format_img(user['face']),
                         "vod_remarks": isVIP[user['isVIP']] + typeName + ' ' + isLogin[user['isLogin']]
                     })
-            pic_url = {'chl': url, 'chs': '208x117', 'cht': 'qr', 'choe': 'UTF-8', 'chld': 'M'}
+            pic_url = {'data': url, 'quietzone': '208', 'codepage': 'UTF8', 'quietunit': 'px', 'errorcorrection': 'M', 'size': 'small'}
             video.append({
                 "vod_id": 'setting_login_' + id,
                 'vod_pic': 'http://jm92swf.s1002.xrea.com/?' + urlencode(pic_url),
             })
             video.append({
                 "vod_id": 'setting_login_' + id,
-                'vod_pic': 'https://bili.ming1992.xyz/chart?' + urlencode(pic_url),
+                'vod_pic': 'https://bili.ming1992.xyz/API/QRCode?' + urlencode(pic_url),
             })
         result['list'] = video
         result['page'] = 1
@@ -2619,7 +2619,10 @@ class Spider(Spider):
             dur = cidResult[1]
             epid = cidResult[2]
         vodTMPQn = self.detailContent_args.get('vodTMPQn', self.userConfig['vodDefaultQn'])
-        query = self.encrypt_wbi(avid=aid, cid=cid, qn=vodTMPQn, fnval=4048, fnver=0, fourk=1, from_client='BROWSER')[0]
+        arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver':0, 'fourk':1, 'from_client': 'BROWSER'}
+        if not self.session_vip.cookies:
+            arg['try_look'] = 1
+        query = self.encrypt_wbi(**arg)[0]
         url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
         if epid:
             if parse:
