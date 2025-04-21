@@ -1,25 +1,23 @@
 # coding=utf-8
 # !/usr/bin/python
-import sys, os, json, threading, hashlib, time, random
+import sys, os, json, threading, hashlib, time, random, re
 from base.spider import Spider
 from requests import session, utils, head
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, unquote, urlencode
 
-sys.path.append('..')
-dirname, filename = os.path.split(os.path.abspath(__file__))
+dirname = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(dirname))
 if dirname.startswith('/data/'):
-    dirname = os.path.abspath(os.path.join(dirname, ".."))
-    dirname = os.path.abspath(os.path.join(dirname, ".."))
-    dirname = f"{dirname}/files"
-sys.path.append(dirname)
+    base_dir = os.path.dirname(os.path.dirname(dirname))
+    dirname = os.path.join(base_dir, 'files')
 
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240409_2",
+        'currentVersion': "20250419_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -65,23 +63,21 @@ class Spider(Spider):
             "国创时间表"
         ],
         'rankingLis': [
+            "影视",
             "动画",
-            "音乐",
-            "舞蹈",
             "游戏",
-            "鬼畜",
+            "音乐",
             "知识",
             "科技",
-            "运动",
             "生活",
             "美食",
             "动物",
+            "运动",
+            "舞蹈",
+            "鬼畜",
+            "娱乐",
             "汽车",
             "时尚",
-            "娱乐",
-            "影视",
-            "原创",
-            "新人",
         ],
     }
 
@@ -98,7 +94,7 @@ class Spider(Spider):
 
     def load_config(self):
         try:
-            with open(f"{dirname}/config.json",encoding="utf-8") as f:
+            with open(os.path.join(dirname, 'config.json'), encoding="utf-8") as f:
                 self.userConfig = json.load(f)
             users = self.userConfig.get('users', {})
             if users.get('master') and users['master'].get('cookies_dic'):
@@ -120,7 +116,7 @@ class Spider(Spider):
             if dafalutValue != None and value != dafalutValue or key in needSaveConfig:
                 userConfig_new[key] = value
         self.dump_config_lock.acquire()
-        with open(f"{dirname}/config.json", 'w', encoding="utf-8") as f:
+        with open(os.path.join(dirname, 'config.json'), 'w', encoding="utf-8") as f:
             data = json.dumps(userConfig_new, indent=1, ensure_ascii=False)
             f.write(data)
         self.dump_config_lock.release()
@@ -356,7 +352,7 @@ class Spider(Spider):
         self.add_search_key_event.set()
 
     def get_tuijian_filter(self):
-        tuijian_filter = {"番剧时间表": "10001", "国创时间表": "10004", "排行榜": "0", "动画": "1", "音乐": "3", "舞蹈": "129", "游戏": "4", "鬼畜": "119", "知识": "36", "科技": "188", "运动": "234", "生活": "160", "美食": "211", "动物": "217", "汽车": "223", "时尚": "155", "娱乐": "5", "影视": "181", "原创": "origin", "新人": "rookie"}
+        tuijian_filter = {"番剧时间表": "10001", "国创时间表": "10004", "排行榜": "0", "动画": "1005", "游戏": "1008", "鬼畜": "1007", "音乐": "1003", "舞蹈": "1004", "影视": "1001", "娱乐": "1002", "知识": "1010", "科技": "1012", "生活": "160", "美食": "1020", "汽车": "1013", "时尚": "1014", "运动": "1018", "动物": "1024"}
         _dic = [{'n': 'tuijianLis', 'v': '分区'}, {'n': 'rankingLis', 'v': '排行榜'}]
         self.config["filter"]['推荐'] = filter_lis = []
         for d in _dic:
@@ -380,13 +376,15 @@ class Spider(Spider):
         self.pool.submit(self.get_wbiKey, hour)
 
     def init(self, extend=""):
-        print("============{0}============".format(extend))
         pass
 
     def isVideoFormat(self, url):
         pass
 
     def manualVideoCheck(self):
+        pass
+
+    def destroy(self):
         pass
 
     # 降低内存占用
@@ -482,7 +480,7 @@ class Spider(Spider):
             })
             video.append({
                 "vod_id": 'setting_login_' + id,
-                'vod_pic': 'https://bili.ming1992.xyz/API/QRCode?' + urlencode(pic_url),
+                'vod_pic': 'https://bili.minggo.undo.it/API/QRCode?' + urlencode(pic_url),
             })
         result['list'] = video
         result['page'] = 1
@@ -490,12 +488,6 @@ class Spider(Spider):
         result['limit'] = 1
         result['total'] = 1
         return result
-
-    time_diff1 = {'1': [0, 300],
-                  '2': [300, 900], '3': [900, 1800], '4': [1800, 3600],
-                  '5': [3600, 99999999999999999999999999999999]
-                  }
-    time_diff = '0'
 
     dynamic_offset = ''
 
@@ -784,6 +776,7 @@ class Spider(Spider):
         if not mid in self.up_info or int(pg) == 1:
             self.get_up_info_event.clear()
             self.pool.submit(self.get_up_info, mid)
+        get_access_id = self.pool.submit(self.get_wbiAccessID, mid)
         Space = order2 = ''
         if order == 'oldest':
             order2 = order
@@ -800,7 +793,7 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order)[0]
+        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order, web_location=1550101, w_webid=get_access_id.result())[0]
         url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
         jo = self._get_sth(url, 'fake').json()
         videos = []
@@ -2065,12 +2058,9 @@ class Spider(Spider):
             result['list'] = [vod]
         return result
 
-    def searchContent(self, key, quick):
-        return self.searchContentPage(key, quick, '1')
-
     search_key = ''
 
-    def searchContentPage(self, key, quick, pg):
+    def searchContent(self, key, quick, pg="1"):
         if not self.session_fake.cookies:
             self.pool.submit(self.getFakeCookie, True)
         for t in self.task_pool:
@@ -2152,6 +2142,24 @@ class Spider(Spider):
             "hour": hour
         }
 
+    def get_wbiAccessID(self, uid: str):
+        info = self.up_info.get(uid, {})
+        access_id = info.get("access_id")
+        access_id_ts = info.get("access_id_ts")
+        wts = round(time.time())
+        if access_id and access_id_ts < wts:
+            return access_id
+        text = self.fetch(f"https://space.bilibili.com/{uid}/dynamic", headers=self.header).text
+        __RENDER_DATA__ = re.search(
+            r"<script id=\"__RENDER_DATA__\" type=\"application/json\">(.*?)</script>",
+            text,
+            re.S,
+        ).group(1)
+        info["access_id"] = access_id = json.loads(unquote(__RENDER_DATA__))["access_id"]
+        info["access_id_ts"] = wts + 86395
+        self.up_info[uid].update(info)
+        return access_id
+
     def encrypt_wbi(self, **params):
         wts = round(time.time())
         hour = time.gmtime(wts).tm_hour
@@ -2170,15 +2178,17 @@ class Spider(Spider):
         params['w_rid'] = w_rid
         return [Ae + "&w_rid=" + w_rid, params]
 
-    def _get_sth(self, url, _type='master', **kwargs):
+    def _get_sth(self, url, _type='master', headers=None, **kwargs):
+        if headers is None:
+            headers = self.header
         if _type == 'vip' and self.session_vip.cookies:
-            rsp = self.session_vip.get(url, headers=self.header, **kwargs)
+            rsp = self.session_vip.get(url, headers=headers, **kwargs)
         elif _type == 'fake':
             if not self.session_fake.cookies:
                 self.getFakeCookie_event.wait()
-            rsp = self.session_fake.get(url, headers=self.header, **kwargs)
+            rsp = self.session_fake.get(url, headers=headers, **kwargs)
         else:
-            rsp = self.session_master.get(url, headers=self.header, **kwargs)
+            rsp = self.session_master.get(url, headers=headers, **kwargs)
         return rsp
 
     def _post_sth(self, url, data):
@@ -2340,6 +2350,8 @@ class Spider(Spider):
         '13': 'av1',
     }
     vod_audio_id = {
+        '30251': 'Hi-Res无损',
+        '30250': '杜比全景声',
         '30280': '192000',
         '30232': '132000',
         '30216': '64000',
@@ -2406,7 +2418,14 @@ class Spider(Spider):
         duration = ja.get('duration')
         minBufferTime = ja.get('minBufferTime')
         video_list = self.pool.submit(self.get_dash_media_list, ja.get('video'), aid, cid, qn)
-        audio_list = self.pool.submit(self.get_dash_media_list, ja.get('audio'), aid, cid, qn)
+        audio = ja.get('audio', [])
+        dolby = ja.get('dolby', {}).get('audio')
+        if dolby:
+            audio = dolby + audio
+        flac = ja.get('flac')
+        if type(flac) == dict:
+            audio.insert(0, flac.get('audio'))
+        audio_list = self.pool.submit(self.get_dash_media_list, audio, aid, cid, qn)
         mpd = f"""<MPD xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:mpeg:dash:schema:mpd:2011" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" type="static" mediaPresentationDuration="PT{duration}S" minBufferTime="PT{minBufferTime}S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011">
   <Period duration="PT{duration}S" start="PT0S">{video_list.result()}{audio_list.result()}
   </Period>
@@ -2473,12 +2492,12 @@ class Spider(Spider):
 
     pC_urlDic = {}
     def _get_playerContent(self, result, aid, cid, epid):
-        self.pC_urlDic[f'{aid}_{cid}'] = urlDic = {**self.pC_urlDic.get(f'{aid}_{cid}', {}), 'aid': aid, 'cid': cid, 'epid': epid}
+        self.pC_urlDic[f'{aid}_{cid}'] = urlDic = {**self.pC_urlDic.get(f'{aid}_{cid}', {}), 'epid': epid}
         vodDefaultQn = self.userConfig['vodDefaultQn']
         if epid:
             url = 'https://api.bilibili.com/pgc/player/web/v2/playurl?aid={}&cid={}&qn={}&fnval=4048&fnver=0&fourk=1&from_client=BROWSER'.format(aid, cid, vodDefaultQn)
         else:
-            arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver':0, 'fourk':1, 'from_client': 'BROWSER'}
+            arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER', 'gaia_source': 'pre-load', 'isGaiaAvoided': 'true'}
             if not self.session_vip.cookies:
                 arg['try_look'] = 1
             query = self.encrypt_wbi(**arg)[0]
@@ -2600,7 +2619,7 @@ class Spider(Spider):
         old_aid = array.get('aid')
         if old_aid and aid != old_aid or f'{aid}_{cid}' in array:
             array['aid'] = aid
-            self.pool.submit(self._refreshDetail, 2)
+            self.pool.submit(self._refreshDetail, 1)
         elif graph_version and old_gv != graph_version:
             array['graph_version'] = graph_version
             self.pool.submit(self._refreshDetail)
@@ -2640,39 +2659,38 @@ class Spider(Spider):
         }
         return result
 
-    def _testUrl(self, url, id, mediaType):
-        status = head(url, headers=self.header).status_code
-        if status != 200:
-            self.pC_urlDic[id][mediaType].pop(url)
-
     def get_fastesUrl(self, ja, id, mediaType):
-        url = ja
+        urlList = ja
         if type(ja) == dict:
-            self.pC_urlDic[id][mediaType] = url = [ja.get('baseUrl', ja.get('url', ''))]
-            url.extend(ja.get('backup_url', []))
-            self.pC_urlDic[id]['deadline'] = int(dict(map(lambda x: x.split('=')[:2], url[0].split('?')[1].split('&'))).get('deadline', 0))
-        for u in url:
-            t = self.pool.submit(self._testUrl, u, id, mediaType)
+            self.pC_urlDic[id][mediaType] = urlList = [ja.get('baseUrl', ja.get('url', ''))]
+            urlList.extend(ja.get('backup_url', []))
+            self.pC_urlDic[id]['deadline'] = int(dict(map(lambda x: x.split('=')[:2], urlList[0].split('?')[1].split('&'))).get('deadline', 0))
+        futures = {self.pool.submit(head, url, headers=self.header, timeout=2): url for url in urlList}
+        for future in as_completed(futures):
+            url = futures[future]
+            try:
+                resp = future.result()
+                if resp.status_code == 200:
+                    for f in futures:
+                        if not f.done():
+                            f.cancel()
+                    self.pC_urlDic[id][mediaType] = url
+                    return url
+            except:
+                continue
 
     def localProxy(self, param):
-        action = {
-            'url': '',
-            'header': '',
-            'param': '',
-            'type': 'string',
-            'after': ''
-        }
         _type = param.get('type')
         if _type == 'subtitle':
             content = self.down_sub(param['url'])
-            return [200, "application/octet-stream", action, content]
+            return [200, "application/octet-stream", content]
         aid = param.get('aid')
         cid = param.get('cid')
         qn = param.get('qn')
         urlDic = self.pC_urlDic[f'{aid}_{cid}']
         if _type == 'dash':
             mpd = self.get_dash(urlDic['mpd'], aid, cid, qn)
-            return [200, "application/dash+xml", action, mpd]
+            return [200, "application/dash+xml", mpd]
         if _type in ['durl', 'video', 'audio']:
             if _type == 'durl':
                 _type = qn
@@ -2681,19 +2699,19 @@ class Spider(Spider):
             if type(urlDic[_type]) == dict or (_deadline - _nowtime) % 10 == 0:
                 self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
                 _deadline = urlDic.get('deadline')
-            url = random.choice(urlDic[_type])
-            if not url or _type != 'audio' and _deadline - _nowtime < 1800:
+            url = urlDic[_type]
+            if type(url) != str or _type != 'audio' and _deadline - _nowtime < 1800:
                 self._get_playerContent({}, aid, cid, urlDic['epid'])
                 urlDic = self.pC_urlDic[f'{aid}_{cid}']
                 if _type == 'video':
                     self.get_dash(urlDic['mpd'], aid, cid, qn)
-                self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
-                url = random.choice(urlDic[_type])
-            action['url'] = url
-            action['header'] = self.header
-            action['type'] = 'redirect'
-            return [302, "video/MP2T", action, url]
-        return [200, "video/MP2T", action, ""]
+                url = self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
+            header = self.header.copy()
+            if 'range' in param:
+                header['Range'] = param['range']
+            r = self._get_sth(url, 'fake', headers=header, stream=True)
+            return [206, "application/octet-stream", r.content]
+        return [404, "text/plain", ""]
 
     config = {
         "player": {},
@@ -2734,6 +2752,6 @@ class Spider(Spider):
 
     header = {
         'Origin': 'https://www.bilibili.com',
-        'Referer': 'https://www.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'
+        'Referer': 'https://space.bilibili.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0'
     }

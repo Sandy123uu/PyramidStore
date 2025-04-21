@@ -14,13 +14,13 @@ from functools import reduce
 from urllib.parse import quote, urlencode
 
 sys.path.append('..')
-dirname, filename = os.path.split(os.path.abspath(__file__))
+dirname = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(dirname)
 
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20240409_2",
+        'currentVersion': "20250420_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -74,23 +74,21 @@ class Spider(Spider):
             "国创时间表"
         ],
         'rankingLis': [
+            "影视",
             "动画",
-            "音乐",
-            "舞蹈",
             "游戏",
-            "鬼畜",
+            "音乐",
             "知识",
             "科技",
-            "运动",
             "生活",
             "美食",
-            "动物",
+            "运动",
+            "动物"
             "汽车",
-            "时尚",
+            "鬼畜",
+            "舞蹈",
             "娱乐",
-            "影视",
-            "原创",
-            "新人",
+            "时尚",
         ],
     }
 
@@ -143,7 +141,6 @@ class Spider(Spider):
         self.pool.submit(self.add_focus_on_up_filter)
         self.pool.submit(self.get_tuijian_filter)
         self.pool.submit(self.add_fav_filter)
-        #self.pool.submit(self.homeVideoContent)
         needLogin = ['动态', '收藏', '关注', '历史']
         cateManual = self.userConfig['cateManual']
         if not self.userid and not 'UP' in cateManual or not '动态' in cateManual and not 'UP' in cateManual:
@@ -373,7 +370,7 @@ class Spider(Spider):
         self.add_search_key_event.set()
 
     def get_tuijian_filter(self):
-        tuijian_filter = {"番剧时间表": "10001", "国创时间表": "10004", "排行榜": "0", "动画": "1", "音乐": "3", "舞蹈": "129", "游戏": "4", "鬼畜": "119", "知识": "36", "科技": "188", "运动": "234", "生活": "160", "美食": "211", "动物": "217", "汽车": "223", "时尚": "155", "娱乐": "5", "影视": "181", "原创": "origin", "新人": "rookie"}
+        tuijian_filter = {"番剧时间表": "10001", "国创时间表": "10004", "排行榜": "0", "动画": "1005", "游戏": "1008", "鬼畜": "1007", "音乐": "1003", "舞蹈": "1004", "影视": "1001", "娱乐": "1002", "知识": "1010", "科技": "1012", "生活": "160", "美食": "1020", "汽车": "1013", "时尚": "1014", "运动": "1018", "动物": "1024"}
         _dic = [{'n': 'tuijianLis', 'v': '分区'}, {'n': 'rankingLis', 'v': '排行榜'}]
         filter_lis = []
         for d in _dic:
@@ -398,8 +395,7 @@ class Spider(Spider):
         self.pool.submit(self.get_wbiKey, hour)
 
     def init(self, extend=""):
-        print("============{0}============".format(extend))
-        pass
+        return
 
     def isVideoFormat(self, url):
         pass
@@ -509,7 +505,7 @@ class Spider(Spider):
             })
             video.append({
                 "vod_id": 'setting_login_' + id,
-                'vod_pic': 'https://bili.ming1992.xyz/API/QRCode?' + urlencode(pic_url),
+                'vod_pic': 'https://bili.minggo.undo.it/API/QRCode?' + urlencode(pic_url),
             })
         result['list'] = video
         result['page'] = 1
@@ -1117,12 +1113,11 @@ class Spider(Spider):
         result['total'] = 999999
         return result
 
-    homeVideoContent_result = {}
     def homeVideoContent(self):
-        if not self.homeVideoContent_result:
-            videos = self.get_found(rid='0', tid='all', pg=1)['list'][0:int(self.userConfig['maxHomeVideoContent'])]
-            self.homeVideoContent_result['list'] = videos
-        return self.homeVideoContent_result
+        #videos = self.get_found(rid='0', tid='all', pg=1)['list'][:int(self.userConfig['maxHomeVideoContent'])]
+        videos = []
+        result = {'list': videos}
+        return result
 
     def categoryContent(self, tid, pg, filter, extend):
         self.pool.submit(self.stop_heartbeat)
@@ -2512,7 +2507,8 @@ class Spider(Spider):
   <Period duration="PT{duration}S" start="PT0S">{video_list.result()}{audio_list.result()}
   </Period>
 </MPD>"""
-        return mpd
+        with open(f"{dirname}/playurl.mpd", 'w', encoding="utf-8") as f:
+            f.write(mpd)
 
     def get_durl(self, ja):
         maxSize = -1
@@ -2619,7 +2615,7 @@ class Spider(Spider):
             dur = cidResult[1]
             epid = cidResult[2]
         vodTMPQn = self.detailContent_args.get('vodTMPQn', self.userConfig['vodDefaultQn'])
-        arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver':0, 'fourk':1, 'from_client': 'BROWSER'}
+        arg={'avid':aid, 'cid': cid, 'qn': vodTMPQn, 'fnval': 4048, 'fnver':0, 'fourk':1, 'from_client': 'BROWSER', 'gaia_source': 'pre-load', 'isGaiaAvoided': 'true'}
         if not self.session_vip.cookies:
             arg['try_look'] = 1
         query = self.encrypt_wbi(**arg)[0]
@@ -2652,9 +2648,8 @@ class Spider(Spider):
             return result
         ja = jo.get('dash')
         if ja:
-            mpd = self.get_dash(ja)
-            mpd = base64.b64encode(mpd.encode('utf-8')).decode('utf-8')
-            result["url"] = f"data:application/dash+xml;base64,{mpd}"
+            self.get_dash(ja)
+            result["url"] = f"{dirname}/playurl.mpd"
         else:
             result["url"] = self.get_durl(jo.get('durl', {}))
         result["parse"] = '0'
@@ -2746,6 +2741,6 @@ class Spider(Spider):
 
     header = {
         'Origin': 'https://www.bilibili.com',
-        'Referer': 'https://www.bilibili.com',
+        'Referer': 'https://space.bilibili.com',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'
     }
