@@ -2500,7 +2500,7 @@ class Spider(Spider):
         query={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER'}
         if epid:
             url = 'https://api.bilibili.com/pgc/player/web/v2/playurl'
-            jRoot = self._get_sth(url, 'vip', queryDict=query).json()
+            jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         else:
             if not self.session_vip.cookies:
                 query['try_look'] = 1
