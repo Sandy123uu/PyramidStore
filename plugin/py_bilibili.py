@@ -1341,8 +1341,7 @@ class Spider(Spider):
         return sec_title, playUrl
 
     def get_vodReply(self, oid, pg=''):
-        query = self.encrypt_wbi(type=1, ps=30, oid=str(oid))[0]
-        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?{query}'
+        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?type=1&ps=30&oid={oid}'
         jRoot = self._get_sth(url).json()
         result = ''
         if jRoot['code'] == 0:
@@ -2505,8 +2504,8 @@ class Spider(Spider):
             if not self.session_vip.cookies:
                 arg['try_look'] = 1
             query = self.encrypt_wbi(**arg)[0]
-            url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
-        jRoot = self._get_sth(url, 'vip').json()
+            url = 'https://api.bilibili.com/x/player/wbi/playurl'
+            jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         ssid = ''
         if jRoot['code'] == 0:
             if 'data' in jRoot:
