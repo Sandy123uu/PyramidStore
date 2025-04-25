@@ -6,7 +6,7 @@ from requests import session, utils, head
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
-from urllib.parse import quote, unquote, urlencode
+from urllib.parse import quote, unquote, urlencode, urlparse
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(dirname))
@@ -17,7 +17,7 @@ if dirname.startswith('/data/'):
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20250419_1",
+        'currentVersion': "20250425_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -31,7 +31,7 @@ class Spider(Spider):
         #上传播放进度间隔时间，单位秒，b站默认间隔15，0则不上传播放历史
         'heartbeatInterval': '15',
         #视频默认画质ID
-        'vodDefaultQn': '116',
+        'vodDefaultQn': '80',
         #视频默认解码ID
         'vodDefaultCodec': '7',
         #音频默认码率ID
@@ -151,6 +151,9 @@ class Spider(Spider):
             result['filters'] = self.config['filter']
         self.pool.submit(self.dump_config)
         return result
+
+    def destroy(self):
+        pass
 
     # 用户cookies
     userid = csrf = ''
@@ -575,8 +578,7 @@ class Spider(Spider):
         result = {}
         pagecount = 1
         if tid == '推荐':
-            query = self.encrypt_wbi(fresh_type=4, feed_version='V8', brush=1, fresh_idx=pg, fresh_idx_1h=pg, ps=self.userConfig['page_size'])[0]
-            url = 'https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?' + query
+            url = f"https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?fresh_type=4&feed_version=V8&brush=1&fresh_idx={pg}&fresh_idx_1h={pg}&ps={self.userConfig['page_size']}"
             pagecount = 99
         elif tid == '热门':
             url = 'https://api.bilibili.com/x/web-interface/popular?pn={0}&ps={1}'.format(pg, self.userConfig['page_size'])
@@ -704,10 +706,10 @@ class Spider(Spider):
     def get_live(self, pg, parent_area_id, area_id):
         result = {}
         if parent_area_id == '推荐':
-            url = 'https://api.live.bilibili.com/xlive/web-interface/v1/webMain/getList?platform=web&page=%s' % pg
+            url = 'https://api.live.bilibili.com/xlive/web-interface/v1/webMain/getMoreRecList?platform=web&page=%s' % pg
             jo = self._get_sth(url).json()
         else:
-            url = 'https://api.live.bilibili.com/xlive/web-interface/v1/second/getList?platform=web&parent_area_id=%s&area_id=%s&sort_type=online&page=%s' % (parent_area_id, area_id, pg)
+            url = 'https://api.live.bilibili.com/xlive/web-interface/v1/second/getList?platform=web&parent_area_id=%s&area_id=%s&sort_type=&page=%s' % (parent_area_id, area_id, pg)
             if parent_area_id == '热门':
                 url = 'https://api.live.bilibili.com/room/v1/room/get_user_recommend?page=%s&page_size=%s' % (pg, self.userConfig['page_size'])
             jo = self._get_sth(url, 'fake').json()
@@ -793,8 +795,7 @@ class Spider(Spider):
         if order2:
             self.get_up_info_event.wait()
             tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        query = self.encrypt_wbi(mid=mid, pn=tmp_pg, ps=self.userConfig['page_size'], order=order, web_location=1550101, w_webid=get_access_id.result())[0]
-        url = f'https://api.bilibili.com/x/space/wbi/arc/search?{query}'
+        url = f"https://api.bilibili.com/x/space/wbi/arc/search?mid={mid}&pn={tmp_pg}&ps={self.userConfig['page_size']}&order={order}&web_location=1550101&w_webid={get_access_id.result()}"
         jo = self._get_sth(url, 'fake').json()
         videos = []
         if jo['code'] == 0:
@@ -1195,9 +1196,9 @@ class Spider(Spider):
         if not str(pg).isdigit():
             value = pg
             pg = 1
-        query = self.encrypt_wbi(keyword=key, page=pg, duration=duration_diff, order=order, search_type=type, page_size=ps)[0]
-        url = f'https://api.bilibili.com/x/web-interface/wbi/search/type?{query}'
-        jo = self._get_sth(url, 'fake').json()
+        query = dict(keyword=key, page=pg, duration=duration_diff, order=order, search_type=type, page_size=ps)
+        url = f'https://api.bilibili.com/x/web-interface/wbi/search/type'
+        jo = self._get_sth(url, 'fake', queryDict=query).json()
         result = {}
         if jo.get('code') == 0 and 'result' in jo['data']:
             videos = []
@@ -1340,8 +1341,7 @@ class Spider(Spider):
         return sec_title, playUrl
 
     def get_vodReply(self, oid, pg=''):
-        query = self.encrypt_wbi(type=1, ps=30, oid=str(oid))[0]
-        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?{query}'
+        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?type=1&ps=30&oid={oid}'
         jRoot = self._get_sth(url).json()
         result = ''
         if jRoot['code'] == 0:
@@ -1430,10 +1430,10 @@ class Spider(Spider):
         for i in array.split('_'):
             if i.startswith('av'):
                 id = i.replace('av', '')
-                query = self.encrypt_wbi(aid=id)[0]
+                query = f'aid={id}'
             elif i.startswith('BV'):
                 id = i
-                query = self.encrypt_wbi(bvid=i)[0]
+                query = f'bvid={i}'
             elif i.startswith('mlid'):
                 mlid = i.replace('mlid', '')
         if not 'vodReply' in this_array:
@@ -2063,22 +2063,20 @@ class Spider(Spider):
     def searchContent(self, key, quick, pg="1"):
         if not self.session_fake.cookies:
             self.pool.submit(self.getFakeCookie, True)
-        for t in self.task_pool:
-            t.cancel()
         if int(pg) > 1:
             return self.get_search_content(key = key, pg = pg, duration_diff = 0, order = '', type = 'video', ps = self.userConfig['page_size'])
-        self.task_pool = []
+        task_pool = []
         self.search_key = key
         types = {'video': '','media_bangumi': '番剧: ', 'media_ft': '影视: ', 'bili_user': '用户: ', 'live': '直播: '}
         for type, value in types.items():
             t = self.pool.submit(self.get_search_content, key = key, pg = value, duration_diff = 0, order = '', type = type, ps = self.userConfig['page_size'])
-            self.task_pool.append(t)
+            task_pool.append(t)
         result = {}
         vodList = []
-        for t in as_completed(self.task_pool):
+        for t in as_completed(task_pool):
             res = t.result().get('list', [])
             vodList.extend(res)
-            self.task_pool.remove(t)
+            task_pool.remove(t)
         if len(vodList):
             result['list'] = vodList
             result['page'] = pg
@@ -2093,6 +2091,7 @@ class Spider(Spider):
         try:
             for t in self.task_pool:
                 t.cancel()
+                self.task_pool.remove(t)
         finally:
             self.stop_heartbeat_event.set()
 
@@ -2178,7 +2177,12 @@ class Spider(Spider):
         params['w_rid'] = w_rid
         return [Ae + "&w_rid=" + w_rid, params]
 
-    def _get_sth(self, url, _type='master', headers=None, **kwargs):
+    def _get_sth(self, url, _type='master', headers=None, queryDict={}, **kwargs):
+        if not queryDict:
+            query = urlparse(url).query
+            queryDict = {k: v for param in query.split('&') if query for k, v in [param.split('=', 1)]} if query else {}
+        url = url.split('?')[0] + '?' + self.encrypt_wbi(**queryDict)[0]
+        print(url)
         if headers is None:
             headers = self.header
         if _type == 'vip' and self.session_vip.cookies:
@@ -2457,8 +2461,7 @@ class Spider(Spider):
 
     def get_subs(self, aid, cid):
         result = []
-        query = self.encrypt_wbi(aid=aid, cid=cid)[0]
-        url = f'https://api.bilibili.com/x/player/wbi/v2?{query}'
+        url = f'https://api.bilibili.com/x/player/wbi/v2?aid={aid}&cid={cid}'
         data = self._get_sth(url, 'master').json().get('data')
         if data:
             for sub in data['subtitle'].get('subtitles', []):
@@ -2494,15 +2497,17 @@ class Spider(Spider):
     def _get_playerContent(self, result, aid, cid, epid):
         self.pC_urlDic[f'{aid}_{cid}'] = urlDic = {**self.pC_urlDic.get(f'{aid}_{cid}', {}), 'epid': epid}
         vodDefaultQn = self.userConfig['vodDefaultQn']
+        query={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER'}
         if epid:
-            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl?aid={}&cid={}&qn={}&fnval=4048&fnver=0&fourk=1&from_client=BROWSER'.format(aid, cid, vodDefaultQn)
+            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl'
+            jRoot = self._get_sth(url, 'vip', queryDict=query).json()
         else:
-            arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER', 'gaia_source': 'pre-load', 'isGaiaAvoided': 'true'}
             if not self.session_vip.cookies:
-                arg['try_look'] = 1
-            query = self.encrypt_wbi(**arg)[0]
-            url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
-        jRoot = self._get_sth(url, 'vip').json()
+                query['try_look'] = 1
+            query['gaia_source'] = 'pre-load'
+            query['isGaiaAvoided'] = 'true'
+            url = 'https://api.bilibili.com/x/player/wbi/playurl'
+            jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         ssid = ''
         if jRoot['code'] == 0:
             if 'data' in jRoot:
@@ -2671,9 +2676,6 @@ class Spider(Spider):
             try:
                 resp = future.result()
                 if resp.status_code == 200:
-                    for f in futures:
-                        if not f.done():
-                            f.cancel()
                     self.pC_urlDic[id][mediaType] = url
                     return url
             except:
@@ -2709,7 +2711,7 @@ class Spider(Spider):
             header = self.header.copy()
             if 'range' in param:
                 header['Range'] = param['range']
-            r = self._get_sth(url, 'fake', headers=header, stream=True)
+            r = self.fetch(url, headers=header, stream=True)
             return [206, "application/octet-stream", r.content]
         return [404, "text/plain", ""]
 
@@ -2753,5 +2755,5 @@ class Spider(Spider):
     header = {
         'Origin': 'https://www.bilibili.com',
         'Referer': 'https://space.bilibili.com',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0'
     }
