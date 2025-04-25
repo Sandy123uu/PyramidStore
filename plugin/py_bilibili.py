@@ -2499,12 +2499,13 @@ class Spider(Spider):
         vodDefaultQn = self.userConfig['vodDefaultQn']
         query={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER'}
         if epid:
-            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl?aid={}&cid={}&qn={}&fnval=4048&fnver=0&fourk=1&from_client=BROWSER'.format(aid, cid, vodDefaultQn)
+            url = 'https://api.bilibili.com/pgc/player/web/v2/playurl'
+            jRoot = self._get_sth(url, 'vip', queryDict=query).json()
         else:
-            arg={'avid':aid, 'cid': cid, 'qn':vodDefaultQn, 'fnval': 4048, 'fnver': 0, 'fourk': 1, 'from_client': 'BROWSER', 'gaia_source': 'pre-load', 'isGaiaAvoided': 'true'}
             if not self.session_vip.cookies:
-                arg['try_look'] = 1
-            query = self.encrypt_wbi(**arg)[0]
+                query['try_look'] = 1
+            query['gaia_source'] = 'pre-load'
+            query['isGaiaAvoided'] = 'true'
             url = 'https://api.bilibili.com/x/player/wbi/playurl'
             jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         ssid = ''
