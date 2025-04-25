@@ -2505,8 +2505,8 @@ class Spider(Spider):
             if not self.session_vip.cookies:
                 arg['try_look'] = 1
             query = self.encrypt_wbi(**arg)[0]
-            url = f'https://api.bilibili.com/x/player/wbi/playurl?{query}'
-        jRoot = self._get_sth(url, 'vip').json()
+            url = 'https://api.bilibili.com/x/player/wbi/playurl'
+            jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         ssid = ''
         if jRoot['code'] == 0:
             if 'data' in jRoot:
