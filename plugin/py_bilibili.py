@@ -1341,7 +1341,8 @@ class Spider(Spider):
         return sec_title, playUrl
 
     def get_vodReply(self, oid, pg=''):
-        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?type=1&ps=30&oid={oid}'
+        query = self.encrypt_wbi(type=1, ps=30, oid=str(oid))[0]
+        url = f'https://api.bilibili.com/x/v2/reply/wbi/main?{query}'
         jRoot = self._get_sth(url).json()
         result = ''
         if jRoot['code'] == 0:
@@ -1430,10 +1431,10 @@ class Spider(Spider):
         for i in array.split('_'):
             if i.startswith('av'):
                 id = i.replace('av', '')
-                query = f'aid={id}'
+                query = self.encrypt_wbi(aid=id)[0]
             elif i.startswith('BV'):
                 id = i
-                query = f'bvid={i}'
+                query = self.encrypt_wbi(bvid=i)[0]
             elif i.startswith('mlid'):
                 mlid = i.replace('mlid', '')
         if not 'vodReply' in this_array:
