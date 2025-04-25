@@ -1431,10 +1431,10 @@ class Spider(Spider):
         for i in array.split('_'):
             if i.startswith('av'):
                 id = i.replace('av', '')
-                query = self.encrypt_wbi(aid=id)[0]
+                query = f'aid={id}'
             elif i.startswith('BV'):
                 id = i
-                query = self.encrypt_wbi(bvid=i)[0]
+                query = f'bvid={i}'
             elif i.startswith('mlid'):
                 mlid = i.replace('mlid', '')
         if not 'vodReply' in this_array:
