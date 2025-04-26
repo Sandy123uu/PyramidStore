@@ -15,7 +15,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20250425_1",
+        'currentVersion': "20250426_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -2627,8 +2627,6 @@ class Spider(Spider):
             epid = cidResult[2]
         vodTMPQn = self.detailContent_args.get('vodTMPQn', self.userConfig['vodDefaultQn'])
         query={'avid':aid, 'cid': cid, 'qn': vodTMPQn, 'fnval': 4048, 'fnver':0, 'fourk':1, 'from_client': 'BROWSER', 'gaia_source': 'pre-load', 'isGaiaAvoided': 'true'}
-        if not self.session_vip.cookies:
-            query['try_look'] = 1
         url = 'https://api.bilibili.com/x/player/wbi/playurl'
         if epid:
             if parse:
@@ -2643,6 +2641,7 @@ class Spider(Spider):
             url = 'https://api.bilibili.com/pgc/player/web/v2/playurl'
             jRoot = self._get_sth(url, 'vip', queryDict=query).json()
         else:
+            query['try_look'] = 1
             jRoot = self._get_sth(url, 'fake', queryDict=query).json()
         if jRoot['code'] == 0:
             if 'data' in jRoot:

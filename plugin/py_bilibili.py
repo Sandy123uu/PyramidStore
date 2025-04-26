@@ -17,7 +17,7 @@ if dirname.startswith('/data/'):
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20250425_1",
+        'currentVersion': "20250426_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
