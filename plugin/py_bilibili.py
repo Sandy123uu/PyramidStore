@@ -1,9 +1,7 @@
 # coding=utf-8
 # !/usr/bin/python
-import sys, os, json, threading, hashlib, time, random, re
+import sys, os, json, threading, hashlib, time, random, re, requests
 from base.spider import Spider
-from requests import session, utils, head
-from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
 from urllib.parse import quote, unquote, urlencode, urlparse
@@ -17,7 +15,7 @@ if dirname.startswith('/data/'):
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20250426_1",
+        'currentVersion': "20250427_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -98,10 +96,10 @@ class Spider(Spider):
                 self.userConfig = json.load(f)
             users = self.userConfig.get('users', {})
             if users.get('master') and users['master'].get('cookies_dic'):
-                self.session_master.cookies = utils.cookiejar_from_dict(users['master']['cookies_dic'])
+                self.session_master.cookies = requests.utils.cookiejar_from_dict(users['master']['cookies_dic'])
                 self.userid = users['master']['userid']
             if users.get('fake') and users['fake'].get('cookies_dic'):
-                self.session_fake.cookies = utils.cookiejar_from_dict(users['fake']['cookies_dic'])
+                self.session_fake.cookies = requests.utils.cookiejar_from_dict(users['fake']['cookies_dic'])
         except:
             self.userConfig = {}
         self.userConfig = {**self.defaultConfig, **self.userConfig}
@@ -122,7 +120,6 @@ class Spider(Spider):
         self.dump_config_lock.release()
 
     pool = ThreadPoolExecutor(max_workers=8)
-    task_pool = []
     # 主页
     def homeContent(self, filter):
         self.pool.submit(self.add_live_filter)
@@ -157,18 +154,11 @@ class Spider(Spider):
 
     # 用户cookies
     userid = csrf = ''
-    session_master = session()
-    session_vip = session()
-    session_fake = session()
+    session_master = requests.session()
+    session_vip = requests.session()
+    session_fake = requests.session()
     con = threading.Condition()
     getCookie_event = threading.Event()
-    retries = Retry(total=5,
-                #status_forcelist=[ 500, 502, 503, 504 ],
-                backoff_factor=0.1)
-    adapter = HTTPAdapter(max_retries=retries)
-    session_master.mount('https://', adapter)
-    session_vip.mount('https://', adapter)
-    session_fake.mount('https://', adapter)
 
     def getCookie_dosth(self, co):
         c = co.strip().split('=', 1)
@@ -192,7 +182,7 @@ class Spider(Spider):
         cookies_dic = user.get('cookies_dic', {})
         if raw_cookie:
             cookies_dic = dict(map(self.getCookie_dosth, raw_cookie.split(';')))
-        cookies = utils.cookiejar_from_dict(cookies_dic)
+        cookies = requests.utils.cookiejar_from_dict(cookies_dic)
         url = 'https://api.bilibili.com/x/web-interface/nav'
         content = self.fetch(url, headers=self.header, cookies=cookies)
         res = json.loads(content.text)
@@ -2085,15 +2075,14 @@ class Spider(Spider):
             result['total'] = 999999
         return result
 
+    current_heartbeat_future = None
     stop_heartbeat_event = threading.Event()
 
     def stop_heartbeat(self):
-        try:
-            for t in self.task_pool:
-                t.cancel()
-                self.task_pool.remove(t)
-        finally:
-            self.stop_heartbeat_event.set()
+        self.stop_heartbeat_event.set()
+        if self.current_heartbeat_future:
+            self.current_heartbeat_future.cancel()
+            self.current_heartbeat_future = None
 
     def start_heartbeat(self, aid, cid, ssid, epid, duration, played_time):
         heartbeatInterval = int(self.userConfig['heartbeatInterval'])
@@ -2182,7 +2171,6 @@ class Spider(Spider):
             query = urlparse(url).query
             queryDict = {k: v for param in query.split('&') if query for k, v in [param.split('=', 1)]} if query else {}
         url = url.split('?')[0] + '?' + self.encrypt_wbi(**queryDict)[0]
-        print(url)
         if headers is None:
             headers = self.header
         if _type == 'vip' and self.session_vip.cookies:
@@ -2480,7 +2468,7 @@ class Spider(Spider):
             if result:
                 result.insert(0,
                     {
-                        "url": "",
+                        "url": f"{self.localProxyUrl}subtitle&url=blank",
                         "name": " ",
                         "format": "application/x-subrip"
                     }
@@ -2629,8 +2617,7 @@ class Spider(Spider):
             self.pool.submit(self._refreshDetail)
         else:
             #回传播放记录
-            heartbeat = self.pool.submit(self.start_heartbeat, aid, cid, ssid, epid, int(dur), played_time)
-            self.task_pool.append(heartbeat)
+            self.current_heartbeat_future = self.pool.submit(self.start_heartbeat, aid, cid, ssid, epid, int(dur), played_time)
         return result
 
     def live_playerContent(self, id):
@@ -2666,10 +2653,13 @@ class Spider(Spider):
     def get_fastesUrl(self, ja, id, mediaType):
         urlList = ja
         if type(ja) == dict:
-            self.pC_urlDic[id][mediaType] = urlList = [ja.get('baseUrl', ja.get('url', ''))]
-            urlList.extend(ja.get('backup_url', []))
-            self.pC_urlDic[id]['deadline'] = int(dict(map(lambda x: x.split('=')[:2], urlList[0].split('?')[1].split('&'))).get('deadline', 0))
-        futures = {self.pool.submit(head, url, headers=self.header, timeout=2): url for url in urlList}
+            self.pC_urlDic[id][mediaType] = primary_url = ja.get('baseUrl') or ja.get('url') or ''
+            urlList = [primary_url] + ja.get('backup_url', [])
+            try:
+                self.pC_urlDic[id]['deadline'] = int(re.search(r'deadline=(\d+)', primary_url).group(1))
+            except:
+                self.pC_urlDic[id]['deadline'] = int(time.time()) + 1800
+        futures = {self.pool.submit(requests.head, url, headers=self.header, timeout=2): url for url in urlList}
         for future in as_completed(futures):
             url = futures[future]
             try:
@@ -2679,11 +2669,14 @@ class Spider(Spider):
                     return url
             except:
                 continue
+        return primary_url
 
     def localProxy(self, param):
         _type = param.get('type')
         if _type == 'subtitle':
-            content = self.down_sub(param['url'])
+            content = ''
+            if param['url'] != 'blank':
+                content = self.down_sub(param['url'])
             return [200, "application/octet-stream", content]
         aid = param.get('aid')
         cid = param.get('cid')
@@ -2697,11 +2690,11 @@ class Spider(Spider):
                 _type = qn
             _nowtime = round(time.time())
             _deadline = urlDic.get('deadline')
-            if type(urlDic[_type]) == dict or (_deadline - _nowtime) % 10 == 0:
+            if type(urlDic[_type]) == dict:
                 self.get_fastesUrl(urlDic[_type], f'{aid}_{cid}', _type)
                 _deadline = urlDic.get('deadline')
             url = urlDic[_type]
-            if type(url) != str or _type != 'audio' and _deadline - _nowtime < 1800:
+            if _type != 'audio' and _deadline - _nowtime < 1200:
                 self._get_playerContent({}, aid, cid, urlDic['epid'])
                 urlDic = self.pC_urlDic[f'{aid}_{cid}']
                 if _type == 'video':
@@ -2710,7 +2703,7 @@ class Spider(Spider):
             header = self.header.copy()
             if 'range' in param:
                 header['Range'] = param['range']
-            r = self.fetch(url, headers=header, stream=True)
+            r = requests.get(url, headers=header, stream=True)
             return [206, "application/octet-stream", r.content]
         return [404, "text/plain", ""]
 
