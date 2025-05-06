@@ -1,8 +1,7 @@
 # coding=utf-8
 # !/usr/bin/python
-import sys, os, json, threading, hashlib, time, random, re
+import sys, os, json, threading, hashlib, hmac, time, random, re, requests
 from base.spider import Spider
-from requests import session, utils, head, get as requests_get
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import reduce
@@ -15,7 +14,7 @@ sys.path.append(dirname)
 class Spider(Spider):
     #默认设置
     defaultConfig = {
-        'currentVersion': "20250426_1",
+        'currentVersion': "20250430_1",
         #【建议通过扫码确认】设置Cookie，在双引号内填写
         'raw_cookie_line': "",
         #如果主cookie没有vip，可以设置第二cookie，仅用于播放会员番剧，所有的操作、记录还是在主cookie，不会同步到第二cookie
@@ -104,10 +103,10 @@ class Spider(Spider):
                 self.userConfig = json.load(f)
             users = self.userConfig.get('users', {})
             if users.get('master') and users['master'].get('cookies_dic'):
-                self.session_master.cookies = utils.cookiejar_from_dict(users['master']['cookies_dic'])
+                self.session_master.cookies = requests.utils.cookiejar_from_dict(users['master']['cookies_dic'])
                 self.userid = users['master']['userid']
             if users.get('fake') and users['fake'].get('cookies_dic'):
-                self.session_fake.cookies = utils.cookiejar_from_dict(users['fake']['cookies_dic'])
+                self.session_fake.cookies = requests.utils.cookiejar_from_dict(users['fake']['cookies_dic'])
         except:
             self.userConfig = {}
         self.userConfig = {**self.defaultConfig, **self.userConfig}
@@ -162,14 +161,12 @@ class Spider(Spider):
 
     # 用户cookies
     userid = csrf = ''
-    session_master = session()
-    session_vip = session()
-    session_fake = session()
+    session_master = requests.session()
+    session_vip = requests.session()
+    session_fake = requests.session()
     con = threading.Condition()
     getCookie_event = threading.Event()
-    retries = Retry(total=5,
-                #status_forcelist=[ 500, 502, 503, 504 ],
-                backoff_factor=0.1)
+    retries = Retry(total=5, backoff_factor=0.1)
     adapter = HTTPAdapter(max_retries=retries)
     session_master.mount('https://', adapter)
     session_vip.mount('https://', adapter)
@@ -197,7 +194,10 @@ class Spider(Spider):
         cookies_dic = user.get('cookies_dic', {})
         if raw_cookie:
             cookies_dic = dict(map(self.getCookie_dosth, raw_cookie.split(';')))
-        cookies = utils.cookiejar_from_dict(cookies_dic)
+        ticket_expires = cookies_dic.get('bili_ticket_expires')
+        if ticket_expires and int(ticket_expires) - int(time.time()) < 86400:
+            cookies_dic = self.get_bili_ticket(cookies_dic)
+        cookies = requests.utils.cookiejar_from_dict(cookies_dic)
         url = 'https://api.bilibili.com/x/web-interface/nav'
         content = self.fetch(url, headers=self.header, cookies=cookies)
         res = json.loads(content.text)
@@ -221,27 +221,38 @@ class Spider(Spider):
         with self.con:
             if len(user) > 1:
                 self.userConfig.update({'users': users})
+                self.dump_config()
             if _type == 'master':
                 self.getCookie_event.set()
 
     getFakeCookie_event = threading.Event()
 
-    def getFakeCookie(self, fromSearch=None):
-        if self.session_fake.cookies:
-            self.getFakeCookie_event.set()
-        header = {}
-        header['User-Agent'] = self.header['User-Agent']
-        rsp = self.fetch('https://space.bilibili.com/2/video', headers=header)
-        self.session_fake.cookies = rsp.cookies
+    def getFakeCookie(self, onlyFresh=False):
+        users = self.userConfig.get('users', {})
+        user = users.get('fake', {})
+        cookies_dic = user.get('cookies_dic', {})
+        ticket_expires = cookies_dic.get('bili_ticket_expires')
+        if onlyFresh or not ticket_expires or (ticket_expires and int(ticket_expires) - int(time.time()) < 86400):
+            session = requests.session()
+            session.cookies.set('b_nut', str(int(time.time())))
+            rsp = session.get('https://api.bilibili.com/x/frontend/finger/spi', headers=self.header).json()
+            if rsp.get('data'):
+                session.cookies.set('buvid3', rsp['data']['b_3'])
+                session.cookies.set('buvid4', rsp['data']['b_4'])
+            session.cookies.set('_uuid', self.generate_uuid())
+            bili_ticket = self.get_bili_ticket()
+            for key, value in bili_ticket.items():
+                session.cookies.set(key, value)
+            if onlyFresh:
+                return session
+            self.session_fake = session
+            with self.con:
+                users['fake'] = {'cookies_dic': session.cookies.get_dict()}
+                self.userConfig.update({'users': users})
+                self.dump_config()
+        else:
+            self.session_fake.cookies = requests.utils.cookiejar_from_dict(cookies_dic)
         self.getFakeCookie_event.set()
-        with self.con:
-            users = self.userConfig.get('users', {})
-            users['fake'] = {'cookies_dic': dict(rsp.cookies)}
-            self.userConfig.update({'users': users})
-        if not fromSearch:
-            self.getCookie_event.wait()
-            if not self.session_master.cookies:
-                self.session_master.cookies = rsp.cookies
 
     add_fav_filter_event = threading.Event()
 
@@ -329,9 +340,8 @@ class Spider(Spider):
 
     def add_live_filter(self):
         cateLive = self.userConfig.get('cateLive', {})
-        cateLive_task = self.pool.submit(self.get_live_list)
         if not cateLive:
-            cateLive = cateLive_task.result()
+            cateLive = self.get_live_list()
         default_cateManualLive_task = self.pool.submit(self.set_default_cateManualLive)
         self.config["filter"]['直播'] = []
         #分区栏
@@ -601,47 +611,35 @@ class Spider(Spider):
 
     def get_found(self, tid, rid, pg):
         result = {}
+        pagecount = 1
         if tid == '推荐':
-            url = f"https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?fresh_type=4&feed_version=V8&brush=1&fresh_idx={pg}&fresh_idx_1h={pg}&ps={self.userConfig['page_size']}"
+            url = f"https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?fresh_type=4&feed_version=V8&brush=1&fresh_idx={pg}&fresh_idx_1h={pg}&ps=24"
+            pagecount = 99
+        elif tid == '热门':
+            url = f'https://api.bilibili.com/x/web-interface/popular?pn={pg}&ps=24'
+            pagecount = 99
+        elif tid == "入站必刷":
+            url = 'https://api.bilibili.com/x/web-interface/popular/precious'
+        elif tid == "每周必看":
+            if int(pg) == 1:
+                url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
+                jo = self._get_sth(url, 'fake').json()
+                self._popSeriesInit = int(jo['data']['list'][0]['number'])
+            number = self._popSeriesInit - int(pg) + 1
+            pagecount = self._popSeriesInit
+            url = f'https://api.bilibili.com/x/web-interface/popular/series/one?number={number}'
         else:
             url = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid={0}&type={1}'.format(rid, tid)
-            if tid == '热门':
-                url = 'https://api.bilibili.com/x/web-interface/popular?pn={0}&ps={1}'.format(pg, self.userConfig['page_size'])
-            elif tid == "入站必刷":
-                url = 'https://api.bilibili.com/x/web-interface/popular/precious'
-            elif tid == "每周必看":
-                if not self._popSeriesInit or int(pg) == 1:
-                    url = 'https://api.bilibili.com/x/web-interface/popular/series/list'
-                    jo = self._get_sth(url, 'fake').json()
-                    number = self._popSeriesInit = jo['data']['list'][0]['number']
-                    self._popSeriesNum = [int(number), 1]
-                else:
-                    number = self._popSeriesNum[0]
-                url = 'https://api.bilibili.com/x/web-interface/popular/series/one?number=' + str(number)
         jo = self._get_sth(url).json()
         if jo['code'] == 0:
             videos = []
             vodList = jo['data'].get('item')
-            if not vodList:
-                vodList = jo['data']['list']
-            if len(vodList) > self.userConfig['page_size']:
-                if tid == "每周必看":
-                    _tmp_pg = int(self._popSeriesNum[1])
-                    value = len(vodList) / self.userConfig['page_size'] - _tmp_pg
-                    if value > 0:
-                        value += 1
-                    if not int(value):
-                        self._popSeriesNum = [int(number) - 1, 1]
-                    else:
-                        self._popSeriesNum[1] = _tmp_pg + 1
-                else:
-                    _tmp_pg = pg
-                vodList = self.pagination(vodList, _tmp_pg)
+            if not vodList: vodList = jo['data']['list']
             for v in map(self.get_found_vod, vodList):
                 videos.extend(v)
             result['list'] = videos
             result['page'] = pg
-            result['pagecount'] = 9999
+            result['pagecount'] = pagecount
             result['limit'] = 99
             result['total'] = 999999
         return result
@@ -824,42 +822,38 @@ class Spider(Spider):
             self.get_up_info_event.clear()
             self.pool.submit(self.get_up_info, mid)
         get_access_id = self.pool.submit(self.get_wbiAccessID, mid)
-        Space = order2 = ''
-        if order == 'oldest':
-            order2 = order
-            order = 'pubdate'
-        elif order == 'quicksearch':
+        Space = last_view_at = ''
+        if order == 'quicksearch':
             Space = '投稿: '
             videos = self.get_up_videos_result.get(mid, [])
             if videos:
                 result['list'] = videos
                 return result
+            order = 'pubdate'
         elif order == 'series':
             return self.get_up_series(mid=mid, pg=pg)
-        tmp_pg = pg
-        if order2:
-            self.get_up_info_event.wait()
-            tmp_pg = self.up_info[mid]['vod_pc'] - int(pg) + 1
-        url = f"https://api.bilibili.com/x/space/wbi/arc/search?mid={mid}&pn={tmp_pg}&ps={self.userConfig['page_size']}&order={order}&web_location=1550101&w_webid={get_access_id.result()}"
+        if int(pg) > 1:
+            last_view_at = self.up_info[mid].get('last_view_at', '')
+        url = f"https://app.bilibili.com/x/v2/space/archive/cursor?order={order}&ps=20&vmid={mid}&aid={last_view_at}&mobi_app=android"
         jo = self._get_sth(url, 'fake').json()
         videos = []
         if jo['code'] == 0:
-            vodList = jo['data']['list']['vlist']
+            vodList = jo['data'].get('item', [])
             for vod in vodList:
-                aid = str(vod['aid']).strip()
+                aid = str(vod['param']).strip()
                 title = self.cleanCharacters(vod['title'].strip())
-                img = vod['pic'].strip()
-                remark = self.second_to_time(self.str2sec(str(vod['length']).strip())) + "  ▶" + self.zh(vod['play'])
+                img = vod['cover'].strip()
+                remark = self.second_to_time(vod['duration']) + "  ▶" + self.zh(vod['play'])
                 if not Space:
-                    remark +=  "  💬" + self.zh(vod['video_review'])
+                    remark +=  "  💬" + self.zh(vod['danmaku'])
                 videos.append({
                     "vod_id": 'av' + aid,
                     "vod_name": Space + title,
                     "vod_pic": self.format_img(img),
                     "vod_remarks": remark
                 })
-            if order2:
-                videos.reverse()
+                if aid:
+                    last_view_at = aid
             if int(pg) == 1:
                 self.get_up_info_event.wait()
                 up_info = self.up_info[mid]
@@ -873,6 +867,7 @@ class Spider(Spider):
                     "vod_remarks": up_info['following'] + '  👥' + up_info['fans'] + '  🎬' + str(up_info['vod_count'])
                 }
                 videos.insert(0, gotoUPHome)
+            self.up_info[mid].update({'last_view_at': aid})
             if Space:
                 self.get_up_videos_result[mid] = videos
             result['list'] = videos
@@ -1109,6 +1104,7 @@ class Spider(Spider):
 
     def homeVideoContent(self):
         videos = self.get_found(rid='0', tid='all', pg=1)['list'][:int(self.userConfig['maxHomeVideoContent'])]
+        #videos = []
         result = {'list': videos}
         return result
 
@@ -1226,9 +1222,9 @@ class Spider(Spider):
                         break
             if 'keyword' in extend:
                 keyword = extend['keyword']
-            return self.get_search_content(key=keyword, pg=pg, duration_diff=duration_diff, order=order, type=type, ps=self.userConfig['page_size'])
+            return self.get_search_content(key=keyword, pg=pg, duration_diff=duration_diff, order=order, type=type)
 
-    def get_search_content(self, key, pg, duration_diff, order, type, ps):
+    def get_search_content(self, key, pg, duration_diff, order, type, ps='24'):
         value = None
         if not str(pg).isdigit():
             value = pg
@@ -1245,15 +1241,14 @@ class Spider(Spider):
             if not vodList:
                 return result
             for vod in vodList:
-                if type != vod['type']:
-                    continue
                 title = ''
+                type = vod.get('type')
                 if type == 'bili_user':
                     aid = 'up' + str(vod['mid']).strip()
                     img = vod['upic'].strip()
                     remark = '👥' + self.zh(vod['fans']) + "  🎬" + self.zh(vod['videos'])
                     title = vod['uname']
-                elif type == 'live':
+                elif type == 'live_room':
                     aid = str(vod['roomid']).strip()
                     img = vod['cover'].strip()
                     remark = '👁' + self.zh(vod['online'])  + '  🆙' + vod['uname']
@@ -1270,12 +1265,14 @@ class Spider(Spider):
                     aid = 'ss' + aid
                     img = vod['cover'].strip()
                     remark = str(vod['index_show']).strip().replace('更新至', '🆕')
-                else:
+                elif type == 'video':
                     aid = 'av' + str(vod['aid']).strip()
                     img = vod['pic'].strip()
                     remark = str(self.second_to_time(self.str2sec(vod['duration']))).strip() + "  ▶" + self.zh(vod['play'])
                     if value == None:
                         remark += "  💬" + self.zh(vod['danmaku'])
+                else:
+                    continue
                 if not title:
                     title = self.cleanCharacters(vod['title'])
                 if value:
@@ -1295,7 +1292,7 @@ class Spider(Spider):
 
     def cleanSpace(self, s): return str(s).replace('\n', '').replace('\t', '').replace('\r', '').replace(' ', '')
 
-    def cleanCharacters(self, s): return str(s).replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').replace('&amp;', '&')
+    def cleanCharacters(self, s): return str(s).replace("<em class=\"keyword\">", "").replace("</em>", "").replace("&quot;",'"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&nbsp;', ' ')
 
     def get_normal_episodes(self, episode):
         aid = episode.get('aid', '')
@@ -1438,7 +1435,7 @@ class Spider(Spider):
         self.detailContent_args = {}
         if aid.startswith('https://b23.tv/'):
             try:
-                r = requests_get(url=aid, headers=self.header, allow_redirects=False)
+                r = requests.get(url=aid, headers=self.header, allow_redirects=False)
                 url = r.headers['Location'].split('?')[0].split('/')
                 while url[-1] == '':
                     url.pop(-1)
@@ -2094,8 +2091,6 @@ class Spider(Spider):
     search_key = ''
 
     def searchContent(self, key, quick):
-        if not self.session_fake.cookies:
-            self.pool.submit(self.getFakeCookie, True)
         task_pool = []
         self.search_key = key
         mid = self.detailContent_args.get('mid', '')
@@ -2230,6 +2225,33 @@ class Spider(Spider):
         params['w_rid'] = w_rid
         return [Ae + "&w_rid=" + w_rid, params]
 
+    def hmac_sha256(self, key, message):
+        key = key.encode('utf-8')
+        message = message.encode('utf-8')
+        hmac_obj = hmac.new(key, message, hashlib.sha256)
+        hash_value = hmac_obj.digest()
+        hash_hex = hash_value.hex()
+        return hash_hex
+
+    def get_bili_ticket(self, cookie_dict={}):
+        o = self.hmac_sha256("XgwSnGZ1p",f"ts{int(time.time())}")
+        url = "https://api.bilibili.com/bapis/bilibili.api.ticket.v1.Ticket/GenWebTicket"
+        params = {
+            "key_id":"ec02",
+            "hexsign":o,
+            "context[ts]":f"{int(time.time())}",
+            "csrf": ''
+        }
+        data = requests.post(url, params=params,headers=self.header).json().get('data', {})
+        if data:
+            ticket = str(data.get('ticket'))
+            expires = str(int(data.get('created_at'))+int(data.get('ttl')))
+            cookie_dict.update({
+                "bili_ticket": ticket,
+                "bili_ticket_expires": expires
+            })
+        return cookie_dict
+
     def _get_sth(self, url, _type='master', headers=None, queryDict={}, **kwargs):
         if not queryDict:
             query = urlparse(url).query
@@ -2237,15 +2259,17 @@ class Spider(Spider):
         url = url.split('?')[0] + '?' + self.encrypt_wbi(**queryDict)[0]
         if headers is None:
             headers = self.header
-        if _type == 'vip' and self.session_vip.cookies:
-            rsp = self.session_vip.get(url, headers=headers, **kwargs)
-        elif _type == 'fake':
-            if not self.session_fake.cookies:
-                self.getFakeCookie_event.wait()
-            rsp = self.session_fake.get(url, headers=headers, **kwargs)
-        else:
-            rsp = self.session_master.get(url, headers=headers, **kwargs)
-        return rsp
+        self.getCookie_event.wait()
+        self.getFakeCookie_event.wait()
+        order = ['vip', 'master', 'fake']
+        if _type not in order:
+            _type = 'fake'
+        start_idx = order.index(_type)
+        candidates = order[start_idx:]
+        for session_type in candidates:
+            session = getattr(self, f'session_{session_type}')
+            if session.cookies or session_type == 'fake':
+                return session.get(url, headers=headers, **kwargs)
 
     def _post_sth(self, url, data):
         return self.session_master.post(url, headers=self.header, data=data)
@@ -2303,16 +2327,38 @@ class Spider(Spider):
             epid = self.find_bangumi_id(jo['redirect_url'])
         return cid, dur, epid
 
+    def generate_uuid(self) -> str:
+        LEN = 16
+        DIGIT_MAP = [
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "10",
+        ]
+        t = int(time.time()) % 100_000
+        index = [random.randint(0, 255) for _ in range(32)]
+        result = []
+        for ii, i in enumerate(index):
+            if ii in [8, 12, 16, 20]:
+                result.append('-')
+            result.append(DIGIT_MAP[i & 0x0f])
+        return "{}{}{:0>5d}infoc".format("".join(result), "", t)
+
     cookie_dic_tmp = {}
 
     def get_cookies(self, key):
         url = 'https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=' + key
-        jo = self._get_sth(url, 'fake').json()
-        if jo['code'] == 0:
-            message = jo['data']['message']
+        session = self.getFakeCookie(onlyFresh=True)
+        rsp = session.get(url, headers=self.header).json()
+        if rsp['code'] == 0:
+            message = rsp['data']['message']
             if not message:
-                self.cookie_dic_tmp[key] = dict(self.session_fake.cookies)
-                self.pool.submit(self.getFakeCookie)
+                chars = '0123456789abcdef'
+                fp = ''.join(random.choice(chars) for _ in range(32))
+                url = f'https://api.bilibili.com/x/frontend/finger/fpfmc?fp={fp}'
+                rsp = session.get(url, headers=self.header).json()
+                if rsp['code'] == 0:
+                    session.cookies.set('fingerprint', fp)
+                    session.cookies.set('buvid_fp', fp)
+                    session.cookies.set('buvid_fp_plain', 'undefined')
+                self.cookie_dic_tmp[key] = session.cookies.get_dict()
             return message
         return '网络错误'
 
@@ -2422,7 +2468,7 @@ class Spider(Spider):
     def get_fastesUrl(self, ja):
         urlList = [ja.get('baseUrl', ja.get('url', ''))]
         urlList.extend(ja.get('backup_url', []))
-        futures = {self.pool.submit(head, url, headers=self.header, timeout=2): url for url in urlList}
+        futures = {self.pool.submit(requests.head, url, headers=self.header, timeout=2): url for url in urlList}
         for future in as_completed(futures):
             url = futures[future]
             try:
@@ -2706,7 +2752,7 @@ class Spider(Spider):
     def localProxy(self, param):
         action = {
             'url': '',
-            'header': '',
+            'header': self.header,
             'param': '',
             'type': 'string',
             'after': ''
@@ -2722,7 +2768,8 @@ class Spider(Spider):
                                 {"n": "悄悄关注", "v": "悄悄关注"}, {"n": "我的粉丝", "v": "我的粉丝"}]}],
             "动态": [{"key": "order", "name": "投稿排序",
                     "value": [{"n": "最新发布", "v": "pubdate"}, {"n": "最多播放", "v": "click"},
-                              {"n": "最多收藏", "v": "stow"}, {"n": "最早发布", "v": "oldest"}, {"n": "合集和列表", "v": "series"}]}, ],
+                              #{"n": "最多收藏", "v": "stow"}, {"n": "最早发布", "v": "oldest"}, 
+                              {"n": "合集和列表", "v": "series"}]}, ],
             "影视": [{"key": "tid", "name": "分类",
                       "value": [{"n": "番剧", "v": "1"}, {"n": "国创", "v": "4"}, {"n": "电影", "v": "2"},
                               {"n": "电视剧", "v": "5"}, {"n": "纪录片", "v": "3"}, {"n": "综艺", "v": "7"}]},
